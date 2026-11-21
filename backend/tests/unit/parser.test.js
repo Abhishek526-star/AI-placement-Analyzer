@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { validateFileBuffer } from '../../src/services/parser/magicBytes.js';
 import { extractSectionsAndProfile } from '../../src/services/parser/sectionExtractor.js';
+import { parsePdf } from '../../src/services/parser/pdfParser.js';
 
 describe('Magic-Byte File Validator (PRD FR-02 & Security)', () => {
   it('accepts valid PDF magic bytes (%PDF-)', () => {
@@ -72,5 +73,101 @@ Engineered a full-stack platform using React, Node.js, and PostgreSQL. Integrate
     expect(skillNames).toContain('Node.js');
     expect(skillNames).toContain('PostgreSQL');
     expect(extraction_confidence).toBeGreaterThan(0.8);
+  });
+});
+
+describe('PDF Parser Service (PRD FR-02 & Section 16)', () => {
+  const validPdfContent = `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 120 >>
+stream
+BT
+/F1 12 Tf
+100 700 Td
+(Software Engineer with hands-on proficiency in JavaScript, React, Node.js, and PostgreSQL database systems.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000244 00000 n 
+0000000416 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+496
+%%EOF`;
+
+  it('parses valid text-based PDF and extracts text and page count', async () => {
+    const buffer = Buffer.from(validPdfContent);
+    const result = await parsePdf(buffer);
+
+    expect(result.text).toContain('Software Engineer with hands-on proficiency');
+    expect(result.text).toContain('React');
+    expect(result.pageCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it('detects scanned / image-only PDF (< 50 chars) and throws SCANNED_PDF_UNREADABLE', async () => {
+    // PDF with only short text (< 50 chars)
+    const shortPdfContent = `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 25 >>
+stream
+BT
+/F1 12 Tf
+100 700 Td
+(Hi) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000244 00000 n 
+0000000321 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+401
+%%EOF`;
+
+    const buffer = Buffer.from(shortPdfContent);
+    await expect(parsePdf(buffer)).rejects.toThrowError(/scanned or contains no readable text/);
+  });
+
+  it('rejects corrupted PDF data with EMPTY_OR_CORRUPT_FILE', async () => {
+    const corruptBuffer = Buffer.from('%PDF-1.4\nCorrupted binary payload that is not valid PDF');
+    await expect(parsePdf(corruptBuffer)).rejects.toThrowError(/Failed to parse PDF document/);
   });
 });

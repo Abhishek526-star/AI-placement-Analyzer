@@ -1,12 +1,39 @@
-import pdfParse from 'pdf-parse';
+import * as pdfModule from 'pdf-parse';
 import { AppError } from '../../middleware/errorHandler.js';
 
 export async function parsePdf(buffer) {
   try {
-    const data = await pdfParse(buffer);
-    const text = (data.text || '').trim();
+    let text = '';
+    let pageCount = 1;
 
-    // Check for scanned / image-only PDFs with insufficient selectable text
+    // pdf-parse v2+ exports PDFParse class
+    if (pdfModule.PDFParse) {
+      const parser = new pdfModule.PDFParse({ data: buffer });
+      try {
+        const data = await parser.getText();
+        text = (data.text || '').replace(/--\s*\d+\s+of\s+\d+\s*--/g, '').trim();
+        pageCount = data.total || (data.pages ? data.pages.length : 1);
+      } finally {
+        if (typeof parser.destroy === 'function') {
+          await parser.destroy();
+        }
+      }
+    } else {
+      // Fallback for pdf-parse v1 / default export
+      const parseFn = typeof pdfModule.default === 'function'
+        ? pdfModule.default
+        : (typeof pdfModule === 'function' ? pdfModule : null);
+
+      if (!parseFn) {
+        throw new Error('Unable to resolve PDF parsing function from pdf-parse');
+      }
+
+      const data = await parseFn(buffer);
+      text = (data.text || '').trim();
+      pageCount = data.numpages || 1;
+    }
+
+    // Check for scanned / image-only PDFs with insufficient selectable text (PRD Section 16 & FR-02)
     if (text.length < 50) {
       throw new AppError(
         'The uploaded PDF appears to be scanned or contains no readable text. Please upload a text-based PDF or DOCX resume.',
@@ -17,7 +44,7 @@ export async function parsePdf(buffer) {
 
     return {
       text,
-      pageCount: data.numpages || 1
+      pageCount
     };
   } catch (err) {
     if (err instanceof AppError) throw err;

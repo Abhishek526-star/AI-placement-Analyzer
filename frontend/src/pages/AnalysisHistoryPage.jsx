@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../lib/api.js';
-import { Target, Clock, ArrowRight, Trash2, Loader2, Sparkles } from 'lucide-react';
+import { Target, Clock, ArrowRight, Trash2, Edit2, Loader2, Sparkles, Check, X } from 'lucide-react';
 
 export function AnalysisHistoryPage({ onOpenAnalysis, onNewAnalysis }) {
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
 
   const fetchHistory = () => {
     setLoading(true);
@@ -33,6 +35,33 @@ export function AnalysisHistoryPage({ onOpenAnalysis, onNewAnalysis }) {
     } catch (err) {
       alert('Failed to delete analysis: ' + (err.message || 'Unknown error'));
     }
+  };
+
+  const handleStartRename = (a, e) => {
+    e.stopPropagation();
+    setEditingId(a.id);
+    setEditTitle(a.title);
+  };
+
+  const handleSaveRename = async (id, e) => {
+    e.stopPropagation();
+    if (!editTitle.trim()) return;
+
+    try {
+      await apiClient(`/analyses/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ title: editTitle.trim() })
+      });
+      setEditingId(null);
+      fetchHistory();
+    } catch (err) {
+      alert('Failed to rename analysis: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  const handleCancelRename = (e) => {
+    e.stopPropagation();
+    setEditingId(null);
   };
 
   if (loading) {
@@ -77,7 +106,31 @@ export function AnalysisHistoryPage({ onOpenAnalysis, onNewAnalysis }) {
                 </div>
 
                 <div>
-                  <h3 className="font-bold text-foreground text-base">{a.title}</h3>
+                  {editingId === a.id ? (
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="px-2.5 py-1 text-sm rounded border border-primary bg-background text-foreground focus:outline-none"
+                        autoFocus
+                      />
+                      <button
+                        onClick={(e) => handleSaveRename(a.id, e)}
+                        className="p-1 rounded text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={handleCancelRename}
+                        className="p-1 rounded text-muted-foreground hover:bg-muted"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <h3 className="font-bold text-foreground text-base">{a.title}</h3>
+                  )}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                     <span className="capitalize">{a.alignment_level} Alignment</span>
                     <span>•</span>
@@ -89,9 +142,17 @@ export function AnalysisHistoryPage({ onOpenAnalysis, onNewAnalysis }) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => handleStartRename(a, e)}
+                  title="Rename Analysis"
+                  className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
                 <button
                   onClick={(e) => handleDelete(a.id, e)}
+                  title="Delete Analysis"
                   className="p-2 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />

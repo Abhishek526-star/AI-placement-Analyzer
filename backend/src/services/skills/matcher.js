@@ -1,4 +1,4 @@
-import { normalizeSkill } from './normalizer.js';
+import { normalizeSkill, CANONICAL_SKILLS_DICTIONARY } from './normalizer.js';
 
 export function matchSkills(resumeSkills = [], rawResumeText = '', jobRequirements = []) {
   const normalizedResumeSkills = resumeSkills.map((rs) => ({
@@ -45,9 +45,29 @@ export function matchSkills(resumeSkills = [], rawResumeText = '', jobRequiremen
       };
     }
 
-    // 2. Fallback text search in raw resume text
+    // 2. Fallback search in raw resume text (checking canonical name & aliases)
+    const dictEntry = CANONICAL_SKILLS_DICTIONARY.find(
+      (s) => s.canonical_name.toLowerCase() === canonicalNameLower
+    );
+
+    let foundInText = false;
+    let foundTerm = normalizedReq.canonical_name;
+
     const regex = new RegExp(`\\b${normalizedReq.canonical_name.replace(/[.+]/g, '\\$&')}\\b`, 'i');
     if (regex.test(lowerRawText)) {
+      foundInText = true;
+    } else if (dictEntry && dictEntry.aliases) {
+      for (const alias of dictEntry.aliases) {
+        const aliasRegex = new RegExp(`\\b${alias.replace(/[.+]/g, '\\$&')}\\b`, 'i');
+        if (aliasRegex.test(lowerRawText)) {
+          foundInText = true;
+          foundTerm = alias;
+          break;
+        }
+      }
+    }
+
+    if (foundInText) {
       return {
         requirement_id: req.id,
         skill_name: req.skill_name,
@@ -56,11 +76,11 @@ export function matchSkills(resumeSkills = [], rawResumeText = '', jobRequiremen
         weight: Number(req.weight) || 10.0,
         status: 'matched',
         score_multiplier: 1.0,
-        confidence: 0.88,
+        confidence: 0.90,
         resume_evidence: [
           {
             section: 'general',
-            quote: `Mentioned in resume: "${normalizedReq.canonical_name}"`
+            quote: `Mentioned in resume: "${foundTerm}"`
           }
         ],
         jd_evidence: [
@@ -73,9 +93,18 @@ export function matchSkills(resumeSkills = [], rawResumeText = '', jobRequiremen
     }
 
     // 3. Partial match check (same category or related framework)
-    const relatedSkill = normalizedResumeSkills.find(
-      (rs) => rs.normalized.category === normalizedReq.category && normalizedReq.category !== 'Other'
-    );
+    // Non-Equivalent Boundary Guard: Never partially match Java with JavaScript
+    const isJavaVsJs = (canonicalNameLower === 'java' && normalizedResumeSkills.some((s) => s.normalized.canonical_name === 'JavaScript')) ||
+                       (canonicalNameLower === 'javascript' && normalizedResumeSkills.some((s) => s.normalized.canonical_name === 'Java'));
+
+    const relatedSkill = !isJavaVsJs
+      ? normalizedResumeSkills.find(
+          (rs) =>
+            rs.normalized.category === normalizedReq.category &&
+            normalizedReq.category !== 'Other' &&
+            normalizedReq.category !== 'Programming Language' // Don't falsely cross-match languages
+        )
+      : null;
 
     if (relatedSkill) {
       return {

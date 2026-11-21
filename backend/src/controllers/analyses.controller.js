@@ -231,6 +231,35 @@ export async function getAnalysis(req, res, next) {
   }
 }
 
+export async function updateAnalysis(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const analysisId = req.params.id;
+    const { title } = req.body;
+    const client = req.supabase || getServiceClient();
+
+    if (!title || !title.trim()) {
+      return next(new AppError('title is required.', 400, 'INVALID_INPUT'));
+    }
+
+    const { data, error } = await client
+      .from('analyses')
+      .update({ title: title.trim() })
+      .eq('id', analysisId)
+      .eq('user_id', userId)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      return next(new AppError('Analysis not found or update failed.', 404, 'UPDATE_FAILED'));
+    }
+
+    return sendSuccess(req, res, data);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function deleteAnalysis(req, res, next) {
   try {
     const userId = req.user.id;

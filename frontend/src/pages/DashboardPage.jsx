@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { apiClient } from '../lib/api.js';
 import { FileText, Target, AlertCircle, ArrowUpRight, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 
-export function DashboardPage({ onNavigate }) {
+export function DashboardPage({ onNavigate, onOpenAnalysis }) {
   const { user } = useAuth();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,6 +29,47 @@ export function DashboardPage({ onNavigate }) {
         setLoading(false);
       });
   }, []);
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto space-y-6 animate-pulse">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-7 w-48 bg-muted rounded-md" />
+            <div className="h-4 w-72 bg-muted rounded-md" />
+          </div>
+          <div className="h-9 w-32 bg-muted rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-5 rounded-xl border border-border bg-card space-y-3">
+              <div className="h-3 w-24 bg-muted rounded" />
+              <div className="h-8 w-16 bg-muted rounded" />
+              <div className="h-3 w-32 bg-muted rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 p-6 rounded-xl border border-border bg-card space-y-4">
+            <div className="h-5 w-36 bg-muted rounded" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-12 bg-muted rounded-lg" />
+              ))}
+            </div>
+          </div>
+          <div className="p-6 rounded-xl border border-border bg-card space-y-4">
+            <div className="h-5 w-40 bg-muted rounded" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 bg-muted rounded-lg" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -111,9 +152,13 @@ export function DashboardPage({ onNavigate }) {
           {summary?.recent_analyses?.length > 0 ? (
             <div className="divide-y divide-border">
               {summary.recent_analyses.map((analysis) => (
-                <div key={analysis.id} className="py-3 flex items-center justify-between">
+                <div
+                  key={analysis.id}
+                  onClick={() => onOpenAnalysis ? onOpenAnalysis(analysis.id) : onNavigate('history')}
+                  className="py-3 px-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer flex items-center justify-between"
+                >
                   <div>
-                    <h4 className="font-semibold text-foreground text-sm">{analysis.title}</h4>
+                    <h4 className="font-semibold text-foreground text-sm hover:text-primary transition-colors">{analysis.title}</h4>
                     <p className="text-xs text-muted-foreground">{analysis.company || 'Unknown Company'}</p>
                   </div>
                   <div className="flex items-center gap-3">

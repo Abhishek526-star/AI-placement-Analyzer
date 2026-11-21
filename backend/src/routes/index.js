@@ -5,6 +5,8 @@ import skillsRoutes from './skills.routes.js';
 import resumesRoutes from './resumes.routes.js';
 import jobsRoutes from './jobs.routes.js';
 import analysesRoutes from './analyses.routes.js';
+import careerIntelligenceRoutes from './careerIntelligence.routes.js';
+import dashboardRoutes from './dashboard.routes.js';
 import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
@@ -18,5 +20,7 @@ router.use('/skills', authMiddleware, skillsRoutes);
 router.use('/resumes', authMiddleware, resumesRoutes);
 router.use('/jobs', authMiddleware, jobsRoutes);
 router.use('/analyses', authMiddleware, analysesRoutes);
+router.use('/analyses', authMiddleware, careerIntelligenceRoutes);
+router.use('/dashboard', authMiddleware, dashboardRoutes);
 
 export default router;

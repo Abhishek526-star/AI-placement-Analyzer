@@ -1,26 +1,16 @@
-// Canonical skills lookup keywords for extraction
-const COMMON_SKILLS = [
-  'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C#', 'C', 'Go', 'Rust', 'PHP',
-  'React', 'Next.js', 'Vue.js', 'Angular', 'Tailwind CSS', 'HTML5', 'CSS3', 'Redux',
-  'Node.js', 'Express.js', 'Spring Boot', 'FastAPI', 'Django', 'Flask', 'REST API',
-  'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQLite', 'Oracle', 'SQL',
-  'Git', 'GitHub', 'Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP', 'Linux',
-  'DSA', 'Object-Oriented Programming', 'System Design'
-];
+import { CANONICAL_SKILLS_DICTIONARY } from '../skills/normalizer.js';
 
 export function extractSectionsAndProfile(rawText) {
   const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
   // Heuristic Contact Extraction
-  const emailMatch = rawText.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/i);
+  const emailMatch = rawText.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,})/i);
   const phoneMatch = rawText.match(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
   const linkedinMatch = rawText.match(/(linkedin\.com\/in\/[a-zA-Z0-9_-]+)/i);
   const githubMatch = rawText.match(/(github\.com\/[a-zA-Z0-9_-]+)/i);
 
-  // First non-empty line is often the candidate name
   const candidateName = lines.length > 0 ? lines[0].slice(0, 80) : '';
 
-  // Section splitting using common resume headings
   const sectionHeaders = {
     summary: /^(summary|professional summary|objective|about me)$/i,
     skills: /^(skills|technical skills|technologies|core competencies|tools)$/i,
@@ -73,18 +63,35 @@ export function extractSectionsAndProfile(rawText) {
     }
   }
 
-  // Detect skills mentioned in skills section or entire text
+  // Detect skills using canonical dictionary + aliases
   const detectedSkills = [];
   const normalizedText = rawText.toLowerCase();
 
-  for (const skill of COMMON_SKILLS) {
-    const regex = new RegExp(`\\b${skill.replace(/[.+]/g, '\\$&')}\\b`, 'i');
-    if (regex.test(normalizedText)) {
-      // Find a sentence or line containing this skill as evidence
-      const evidenceLine = lines.find((l) => regex.test(l)) || `Demonstrated knowledge of ${skill}`;
+  for (const skill of CANONICAL_SKILLS_DICTIONARY) {
+    // Check canonical name
+    const canonicalRegex = new RegExp(`\\b${skill.canonical_name.replace(/[.+]/g, '\\$&')}\\b`, 'i');
+    let matched = canonicalRegex.test(normalizedText);
+    let matchedAlias = skill.canonical_name;
+
+    // Check aliases
+    if (!matched) {
+      for (const alias of skill.aliases) {
+        const aliasRegex = new RegExp(`\\b${alias.replace(/[.+]/g, '\\$&')}\\b`, 'i');
+        if (aliasRegex.test(normalizedText)) {
+          matched = true;
+          matchedAlias = alias;
+          break;
+        }
+      }
+    }
+
+    if (matched) {
+      const matchRegex = new RegExp(`\\b${matchedAlias.replace(/[.+]/g, '\\$&')}\\b`, 'i');
+      const evidenceLine = lines.find((l) => matchRegex.test(l)) || `Demonstrated knowledge of ${skill.canonical_name}`;
+      
       detectedSkills.push({
-        skill_name: skill,
-        section: sectionTextBlocks.skills.some((l) => regex.test(l)) ? 'skills' : 'projects',
+        skill_name: skill.canonical_name,
+        section: sectionTextBlocks.skills.some((l) => matchRegex.test(l)) ? 'skills' : 'projects',
         evidence_text: evidenceLine.slice(0, 250),
         confidence: 0.95
       });
@@ -119,6 +126,6 @@ export function extractSectionsAndProfile(rawText) {
       certifications: sections.certifications
     },
     skills: detectedSkills,
-    extraction_confidence: detectedSkills.length > 5 ? 0.92 : 0.75
+    extraction_confidence: detectedSkills.length > 3 ? 0.92 : 0.75
   };
 }

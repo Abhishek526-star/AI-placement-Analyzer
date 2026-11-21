@@ -11,6 +11,7 @@ import { ResumeReviewPage } from './pages/ResumeReviewPage.jsx';
 import { JobDescriptionInputPage } from './pages/JobDescriptionInputPage.jsx';
 import { AnalysisResultsPage } from './pages/AnalysisResultsPage.jsx';
 import { AnalysisHistoryPage } from './pages/AnalysisHistoryPage.jsx';
+import { ProfileSettingsPage } from './pages/ProfileSettingsPage.jsx';
 import { apiClient } from './lib/api.js';
 
 function MainLayout() {
@@ -117,7 +118,12 @@ function MainLayout() {
       <div className="flex-1 flex">
         <Sidebar currentView={currentView} onNavigate={setCurrentView} />
         <main className="flex-1 overflow-y-auto">
-          {currentView === 'dashboard' && <DashboardPage onNavigate={setCurrentView} />}
+          {currentView === 'dashboard' && (
+            <DashboardPage
+              onNavigate={setCurrentView}
+              onOpenAnalysis={handleOpenAnalysis}
+            />
+          )}
           
           {currentView === 'resumes' && (
             <ResumeUploadPage
@@ -157,18 +163,9 @@ function MainLayout() {
           )}
 
           {currentView === 'settings' && (
-            <div className="p-8 max-w-4xl mx-auto space-y-6">
-              <h2 className="text-2xl font-bold text-foreground">Account & Privacy Settings</h2>
-              <div className="p-6 rounded-xl border border-border bg-card space-y-3">
-                <h3 className="font-semibold text-foreground text-base">Right to Erasure & Privacy</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  All uploaded resumes are stored in private Supabase Storage buckets protected by Row Level Security (RLS). You can delete any resume or completely delete your account at any time, cascading the deletion across all database tables and storage files.
-                </p>
-                <div className="pt-2">
-                  <span className="text-xs text-muted-foreground font-mono">User ID: {user?.id}</span>
-                </div>
-              </div>
-            </div>
+            <ProfileSettingsPage
+              onSignOut={() => setCurrentView('dashboard')}
+            />
           )}
         </main>
       </div>

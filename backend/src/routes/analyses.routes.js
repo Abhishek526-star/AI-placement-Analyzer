@@ -4,6 +4,7 @@ import {
   createAnalysis,
   listAnalyses,
   getAnalysis,
+  updateAnalysis,
   deleteAnalysis
 } from '../controllers/analyses.controller.js';
 import { validate } from '../middleware/validate.js';
@@ -22,6 +23,7 @@ const createAnalysisSchema = {
 router.post('/', analysisTriggerLimiter, validate(createAnalysisSchema), createAnalysis);
 router.get('/', generalReadLimiter, listAnalyses);
 router.get('/:id', generalReadLimiter, getAnalysis);
+router.patch('/:id', standardWriteLimiter, updateAnalysis);
 router.delete('/:id', standardWriteLimiter, deleteAnalysis);
 
 export default router;

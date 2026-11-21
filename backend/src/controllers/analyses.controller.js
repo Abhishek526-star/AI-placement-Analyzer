@@ -1,6 +1,10 @@
 import crypto from 'crypto';
 import { matchSkills } from '../services/skills/matcher.js';
 import { calculateMatchScore } from '../services/skills/scorer.js';
+import { retrieveEvidenceForRequirements } from '../services/rag/retriever.js';
+import { getAIProvider } from '../services/ai/aiProvider.js';
+import { GAP_ANALYSIS_SYSTEM_PROMPT, buildGapAnalysisUserPrompt, PROMPT_VERSION } from '../services/ai/prompts/gapAnalysis.v1.js';
+import { verifyAndCleanAIOutput } from '../services/ai/verifier.js';
 import { sendSuccess, sendPaginated } from '../utils/response.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { getServiceClient } from '../config/supabase.js';
@@ -9,6 +13,7 @@ export async function createAnalysis(req, res, next) {
   try {
     const userId = req.user.id;
     const client = req.supabase || getServiceClient();
+    const aiProvider = getAIProvider();
     const { resume_id, job_description_id, title } = req.body;
 
     if (!resume_id || !job_description_id) {
@@ -40,14 +45,55 @@ export async function createAnalysis(req, res, next) {
     const resumeSkills = skillsRes.data || [];
     const jobRequirements = reqsRes.data || [];
 
-    // 3. Deterministic Matching & Scoring (Zero Hallucination)
+    // 3. Deterministic Matching & Scoring (ADR-01: Score Lock)
     const rawMatches = matchSkills(resumeSkills, resume.extracted_text, jobRequirements);
     const { match_score, alignment_level, score_breakdown, ranked_matches } = calculateMatchScore(rawMatches);
+
+    // 4. Hybrid RAG Retrieval (ADR-03: pgvector + FTS via RRF)
+    const { uniqueChunks, perRequirementEvidence } = await retrieveEvidenceForRequirements({
+      userId,
+      resumeId: resume_id,
+      requirements: jobRequirements,
+      supabaseClient: client
+    });
+
+    // 5. Grounded LLM Synthesis with Indirect Injection Protection (ADR-04)
+    let aiSynthesis = null;
+    try {
+      const userPrompt = buildGapAnalysisUserPrompt({
+        deterministicMatchData: {
+          match_score,
+          alignment_level,
+          score_breakdown,
+          skill_matches: ranked_matches.map((m) => ({
+            skill: m.skill_name,
+            status: m.status,
+            weight: m.weight
+          }))
+        },
+        retrievedResumeChunks: uniqueChunks,
+        retrievedJdChunks: []
+      });
+
+      const rawAiJson = await aiProvider.generateStructuredJSON({
+        systemPrompt: GAP_ANALYSIS_SYSTEM_PROMPT,
+        userPrompt,
+        temperature: 0.1
+      });
+
+      // 6. 3-Stage Verification Gate (Zod schema + citation check + repair)
+      const verificationResult = verifyAndCleanAIOutput(rawAiJson, uniqueChunks);
+      if (verificationResult.isValid && verificationResult.repaired) {
+        aiSynthesis = verificationResult.repaired;
+      }
+    } catch (aiErr) {
+      console.warn('[AIGenerationWarning] Graceful fallback to deterministic analysis:', aiErr.message);
+    }
 
     const analysisId = crypto.randomUUID();
     const analysisTitle = title || `${jd.title || 'Role'} Match Analysis`;
 
-    // 4. Insert into analyses table
+    // 7. Insert into analyses table
     const { data: analysisRecord, error: insertErr } = await client
       .from('analyses')
       .insert({
@@ -57,22 +103,25 @@ export async function createAnalysis(req, res, next) {
         resume_version: resume.version || 1,
         job_description_id,
         title: analysisTitle,
-        status: 'completed', // Deterministic v1 analysis is instant
+        status: 'completed',
         current_step: 'completed',
         match_score,
         alignment_level,
         score_breakdown,
-        analysis_result: {
+        analysis_result: aiSynthesis || {
           summary: {
             role: jd.title,
             company: jd.company,
             overall_alignment: alignment_level,
             match_score,
-            total_requirements: jobRequirements.length,
-            matched_count: score_breakdown.matched_count,
-            gap_count: score_breakdown.missing_count + score_breakdown.partial_count
-          }
-        }
+            strengths: ['Deterministic verified skills recorded from candidate resume.'],
+            limitations: ['Grounded narrative generation safely defaulted to deterministic verification.']
+          },
+          recommendations: []
+        },
+        model_version: 'gemini-1.5-flash',
+        prompt_version: PROMPT_VERSION,
+        schema_version: '1.0'
       })
       .select('*')
       .single();
@@ -82,30 +131,37 @@ export async function createAnalysis(req, res, next) {
       return next(new AppError('Failed to record analysis.', 500, 'DB_INSERT_FAILED'));
     }
 
-    // 5. Insert rows into analysis_skill_matches
+    // 8. Insert rows into analysis_skill_matches with verified evidence
     if (ranked_matches.length > 0) {
-      const matchRows = ranked_matches.map((m) => ({
-        analysis_id: analysisId,
-        user_id: userId,
-        skill_name: m.skill_name,
-        jd_importance: m.jd_importance,
-        status: m.status,
-        weight: m.weight,
-        score: m.score,
-        confidence: m.confidence,
-        priority_rank: m.priority_rank,
-        resume_evidence: m.resume_evidence,
-        jd_evidence: m.jd_evidence,
-        explanation: m.explanation,
-        recommended_next_step: m.status === 'missing' ? `Practice core concepts and build a hands-on project with ${m.skill_name}` : null
-      }));
+      const matchRows = ranked_matches.map((m) => {
+        // Attach retrieved chunk evidence if available
+        const retrievedEv = perRequirementEvidence[m.skill_name] || [];
+        const combinedResumeEv = m.resume_evidence.length > 0 ? m.resume_evidence : retrievedEv;
+
+        return {
+          analysis_id: analysisId,
+          user_id: userId,
+          skill_name: m.skill_name,
+          jd_importance: m.jd_importance,
+          status: m.status,
+          weight: m.weight,
+          score: m.score,
+          confidence: m.confidence,
+          priority_rank: m.priority_rank,
+          resume_evidence: combinedResumeEv,
+          jd_evidence: m.jd_evidence,
+          explanation: m.explanation,
+          recommended_next_step: m.status === 'missing' ? `Practice core concepts and build a hands-on project with ${m.skill_name}` : null
+        };
+      });
 
       await client.from('analysis_skill_matches').insert(matchRows);
     }
 
     return sendSuccess(req, res, {
       ...analysisRecord,
-      skill_matches: ranked_matches
+      skill_matches: ranked_matches,
+      verified_evidence: perRequirementEvidence
     }, 201);
   } catch (err) {
     next(err);

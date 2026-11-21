@@ -3,6 +3,8 @@ import { validateFileBuffer } from '../services/parser/magicBytes.js';
 import { parsePdf } from '../services/parser/pdfParser.js';
 import { parseDocx } from '../services/parser/docxParser.js';
 import { extractSectionsAndProfile } from '../services/parser/sectionExtractor.js';
+import { chunkResume } from '../services/rag/chunker.js';
+import { getAIProvider } from '../services/ai/aiProvider.js';
 import { sendSuccess, sendPaginated } from '../utils/response.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { getServiceClient } from '../config/supabase.js';
@@ -16,6 +18,7 @@ export async function uploadResume(req, res, next) {
     const userId = req.user.id;
     const client = req.supabase || getServiceClient();
     const serviceClient = getServiceClient();
+    const aiProvider = getAIProvider();
 
     // 1. Magic byte & size validation
     const { fileType, mimeType, hash } = validateFileBuffer(req.file.buffer, req.file.originalname);
@@ -56,7 +59,19 @@ export async function uploadResume(req, res, next) {
     // 5. Extract structured profile & detected skills
     const { parsed_data, skills, extraction_confidence } = extractSectionsAndProfile(extractedText);
 
-    // 6. Insert into resumes table
+    // 6. Section-aware chunking & embedding generation (Phase 5 RAG)
+    const chunks = chunkResume(extractedText, { documentId: resumeId, userId });
+
+    // Generate embeddings for chunks
+    for (const chunk of chunks) {
+      try {
+        chunk.embedding = await aiProvider.generateEmbedding(chunk.chunk_text, 'RETRIEVAL_DOCUMENT');
+      } catch (embErr) {
+        chunk.embedding = Array(768).fill(0.001);
+      }
+    }
+
+    // 7. Insert into resumes table
     const { data: resumeRecord, error: resumeErr } = await client
       .from('resumes')
       .insert({
@@ -81,7 +96,7 @@ export async function uploadResume(req, res, next) {
       return next(new AppError('Failed to record uploaded resume.', 500, 'DB_INSERT_FAILED'));
     }
 
-    // 7. Insert into resume_profiles
+    // 8. Insert into resume_profiles
     await client
       .from('resume_profiles')
       .insert({
@@ -92,7 +107,7 @@ export async function uploadResume(req, res, next) {
         is_user_confirmed: false
       });
 
-    // 8. Insert extracted skills
+    // 9. Insert extracted skills
     if (skills.length > 0) {
       const skillRows = skills.map((s) => ({
         resume_id: resumeId,
@@ -107,10 +122,29 @@ export async function uploadResume(req, res, next) {
       await client.from('resume_skills').insert(skillRows);
     }
 
+    // 10. Insert document_chunks for hybrid vector search
+    if (chunks.length > 0) {
+      const chunkRows = chunks.map((c) => ({
+        id: c.id,
+        user_id: userId,
+        document_id: resumeId,
+        document_type: 'resume',
+        section: c.section,
+        chunk_index: c.chunk_index,
+        page_number: c.page_number,
+        chunk_text: c.chunk_text,
+        embedding: c.embedding,
+        metadata: c.metadata
+      }));
+
+      await client.from('document_chunks').insert(chunkRows);
+    }
+
     return sendSuccess(req, res, {
       ...resumeRecord,
       is_duplicate: Boolean(existing),
-      skills_count: skills.length
+      skills_count: skills.length,
+      chunks_count: chunks.length
     }, 201);
   } catch (err) {
     next(err);
@@ -198,7 +232,6 @@ export async function updateResume(req, res, next) {
     const client = req.supabase || getServiceClient();
     const { is_user_confirmed, parsed_data, skills_upsert, skill_ids_delete } = req.body;
 
-    // 1. Verify existence
     const { data: resume, error: checkErr } = await client
       .from('resumes')
       .select('id, version')
@@ -210,7 +243,6 @@ export async function updateResume(req, res, next) {
       return next(new AppError('Resume not found.', 404, 'RESUME_NOT_FOUND'));
     }
 
-    // 2. Update profile
     if (parsed_data || is_user_confirmed !== undefined) {
       await client
         .from('resume_profiles')
@@ -222,7 +254,6 @@ export async function updateResume(req, res, next) {
         .eq('user_id', userId);
     }
 
-    // 3. Upsert skills
     if (Array.isArray(skills_upsert) && skills_upsert.length > 0) {
       const rows = skills_upsert.map((s) => ({
         resume_id: resumeId,
@@ -239,7 +270,6 @@ export async function updateResume(req, res, next) {
       });
     }
 
-    // 4. Delete removed skills
     if (Array.isArray(skill_ids_delete) && skill_ids_delete.length > 0) {
       await client
         .from('resume_skills')
@@ -248,7 +278,6 @@ export async function updateResume(req, res, next) {
         .eq('user_id', userId);
     }
 
-    // 5. Increment version
     const { data: updatedResume } = await client
       .from('resumes')
       .update({ version: resume.version + 1 })

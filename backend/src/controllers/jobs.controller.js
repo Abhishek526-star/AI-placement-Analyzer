@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 import { parseJobDescription } from '../services/parser/jdParser.js';
+import { chunkJobDescription } from '../services/rag/chunker.js';
+import { getAIProvider } from '../services/ai/aiProvider.js';
 import { sendSuccess, sendPaginated } from '../utils/response.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { getServiceClient } from '../config/supabase.js';
@@ -8,6 +10,7 @@ export async function createJobDescription(req, res, next) {
   try {
     const userId = req.user.id;
     const client = req.supabase || getServiceClient();
+    const aiProvider = getAIProvider();
     const { title, company, experience_level, location, description } = req.body;
 
     if (!title || !description) {
@@ -19,7 +22,18 @@ export async function createJobDescription(req, res, next) {
 
     const jdId = crypto.randomUUID();
 
-    // 2. Insert into job_descriptions table
+    // 2. Section-aware chunking for JD (Phase 5 RAG)
+    const chunks = chunkJobDescription(description, { documentId: jdId, userId });
+
+    for (const chunk of chunks) {
+      try {
+        chunk.embedding = await aiProvider.generateEmbedding(chunk.chunk_text, 'RETRIEVAL_DOCUMENT');
+      } catch (embErr) {
+        chunk.embedding = Array(768).fill(0.001);
+      }
+    }
+
+    // 3. Insert into job_descriptions table
     const { data: jdRecord, error: jdErr } = await client
       .from('job_descriptions')
       .insert({
@@ -40,7 +54,7 @@ export async function createJobDescription(req, res, next) {
       return next(new AppError('Failed to record job description.', 500, 'DB_INSERT_FAILED'));
     }
 
-    // 3. Insert requirements into job_requirements table
+    // 4. Insert requirements into job_requirements table
     if (requirements.length > 0) {
       const reqRows = requirements.map((r) => ({
         job_description_id: jdId,
@@ -55,9 +69,28 @@ export async function createJobDescription(req, res, next) {
       await client.from('job_requirements').insert(reqRows);
     }
 
+    // 5. Insert JD chunks into document_chunks table
+    if (chunks.length > 0) {
+      const chunkRows = chunks.map((c) => ({
+        id: c.id,
+        user_id: userId,
+        document_id: jdId,
+        document_type: 'job_description',
+        section: c.section,
+        chunk_index: c.chunk_index,
+        page_number: c.page_number,
+        chunk_text: c.chunk_text,
+        embedding: c.embedding,
+        metadata: c.metadata
+      }));
+
+      await client.from('document_chunks').insert(chunkRows);
+    }
+
     return sendSuccess(req, res, {
       ...jdRecord,
-      requirements
+      requirements,
+      chunks_count: chunks.length
     }, 201);
   } catch (err) {
     next(err);

@@ -1,0 +1,13 @@
+{
+  "name": "ai-placement-analyzer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Placement Analyzer - Grounded AI-Powered Placement Prep Platform in Pure React JS & Node.js",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "test": "cd backend && npm test",
+    "eval:ai": "cd backend && npm run eval:ai"
+  }
+}

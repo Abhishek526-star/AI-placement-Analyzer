@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { getProfile, updateProfile, deleteAccount } from '../controllers/profile.controller.js';
-import { authMiddleware } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { standardWriteLimiter, generalReadLimiter } from '../middleware/rateLimiter.js';
 
@@ -13,8 +12,8 @@ const updateProfileSchema = {
   })
 };
 
-router.get('/profile', authMiddleware, generalReadLimiter, getProfile);
-router.patch('/profile', authMiddleware, standardWriteLimiter, validate(updateProfileSchema), updateProfile);
-router.delete('/profile', authMiddleware, standardWriteLimiter, deleteAccount);
+router.get('/', generalReadLimiter, getProfile);
+router.patch('/', standardWriteLimiter, validate(updateProfileSchema), updateProfile);
+router.delete('/', standardWriteLimiter, deleteAccount);
 
 export default router;

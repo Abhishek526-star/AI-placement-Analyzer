@@ -6,16 +6,28 @@ import { Sidebar } from './components/layout/Sidebar.jsx';
 import { LandingPage } from './pages/LandingPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
 import { AuthModal } from './pages/AuthModal.jsx';
+import { ResumeUploadPage } from './pages/ResumeUploadPage.jsx';
+import { ResumeReviewPage } from './pages/ResumeReviewPage.jsx';
 
 function MainLayout() {
   const { user, isLoading } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState('login');
+  const [activeResumeId, setActiveResumeId] = useState(null);
 
   const handleOpenAuth = (mode = 'login') => {
     setAuthModalMode(mode);
     setAuthModalOpen(true);
+  };
+
+  const handleUploadSuccess = (resumeId) => {
+    setActiveResumeId(resumeId);
+    setCurrentView('resume-review');
+  };
+
+  const handleConfirmSuccess = () => {
+    setCurrentView('analyze');
   };
 
   if (isLoading) {
@@ -29,7 +41,7 @@ function MainLayout() {
     );
   }
 
-  // Unauthenticated visitors see the Landing Page by default
+  // Unauthenticated visitors see the Landing Page
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -62,24 +74,35 @@ function MainLayout() {
         <main className="flex-1 overflow-y-auto">
           {currentView === 'dashboard' && <DashboardPage onNavigate={setCurrentView} />}
           {currentView === 'resumes' && (
-            <div className="p-8 max-w-4xl mx-auto text-center py-20">
-              <h2 className="text-2xl font-bold mb-2">Resume Management</h2>
-              <p className="text-muted-foreground text-sm">
-                Phase 2 Ingestion pipeline ready for upload and parsing.
-              </p>
-            </div>
+            <ResumeUploadPage
+              onUploadSuccess={handleUploadSuccess}
+              onCancel={() => setCurrentView('dashboard')}
+            />
+          )}
+          {currentView === 'resume-review' && activeResumeId && (
+            <ResumeReviewPage
+              resumeId={activeResumeId}
+              onConfirmSuccess={handleConfirmSuccess}
+              onBack={() => setCurrentView('resumes')}
+            />
           )}
           {currentView === 'analyze' && (
             <div className="p-8 max-w-4xl mx-auto text-center py-20">
-              <h2 className="text-2xl font-bold mb-2">New Match Analysis</h2>
-              <p className="text-muted-foreground text-sm">
-                Paste your target Job Description to compare against your verified resume.
+              <h2 className="text-2xl font-bold mb-2 text-foreground">New Match Analysis</h2>
+              <p className="text-muted-foreground text-sm max-w-md mx-auto mb-6">
+                Paste your target Job Description to compare against your verified resume requirements.
               </p>
+              <button
+                onClick={() => setCurrentView('resumes')}
+                className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted"
+              >
+                Upload / Select Resume First
+              </button>
             </div>
           )}
           {currentView === 'history' && (
             <div className="p-8 max-w-4xl mx-auto text-center py-20">
-              <h2 className="text-2xl font-bold mb-2">Analysis History</h2>
+              <h2 className="text-2xl font-bold mb-2 text-foreground">Analysis History</h2>
               <p className="text-muted-foreground text-sm">
                 Revisit, compare, and manage your past placement gap analyses.
               </p>
@@ -87,7 +110,7 @@ function MainLayout() {
           )}
           {currentView === 'settings' && (
             <div className="p-8 max-w-4xl mx-auto text-center py-20">
-              <h2 className="text-2xl font-bold mb-2">Account & Settings</h2>
+              <h2 className="text-2xl font-bold mb-2 text-foreground">Account & Settings</h2>
               <p className="text-muted-foreground text-sm">
                 Manage profile, privacy disclosures, and account erasure controls.
               </p>

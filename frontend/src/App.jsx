@@ -8,13 +8,20 @@ import { DashboardPage } from './pages/DashboardPage.jsx';
 import { AuthModal } from './pages/AuthModal.jsx';
 import { ResumeUploadPage } from './pages/ResumeUploadPage.jsx';
 import { ResumeReviewPage } from './pages/ResumeReviewPage.jsx';
+import { JobDescriptionInputPage } from './pages/JobDescriptionInputPage.jsx';
+import { AnalysisResultsPage } from './pages/AnalysisResultsPage.jsx';
+import { AnalysisHistoryPage } from './pages/AnalysisHistoryPage.jsx';
+import { apiClient } from './lib/api.js';
 
 function MainLayout() {
   const { user, isLoading } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState('login');
+  
   const [activeResumeId, setActiveResumeId] = useState(null);
+  const [activeJdId, setActiveJdId] = useState(null);
+  const [currentAnalysis, setCurrentAnalysis] = useState(null);
 
   const handleOpenAuth = (mode = 'login') => {
     setAuthModalMode(mode);
@@ -26,8 +33,46 @@ function MainLayout() {
     setCurrentView('resume-review');
   };
 
-  const handleConfirmSuccess = () => {
+  const handleConfirmProfileSuccess = (resumeId) => {
+    setActiveResumeId(resumeId);
     setCurrentView('analyze');
+  };
+
+  const handleJdCreated = async (jdId) => {
+    setActiveJdId(jdId);
+    
+    // If no resume uploaded yet, prompt to upload
+    if (!activeResumeId) {
+      alert('Please upload and verify your resume first before matching against this job description.');
+      setCurrentView('resumes');
+      return;
+    }
+
+    try {
+      // Trigger deterministic match analysis
+      const analysisData = await apiClient('/analyses', {
+        method: 'POST',
+        body: JSON.stringify({
+          resume_id: activeResumeId,
+          job_description_id: jdId
+        })
+      });
+
+      setCurrentAnalysis(analysisData);
+      setCurrentView('results');
+    } catch (err) {
+      alert('Analysis error: ' + (err.message || 'Failed to calculate match score'));
+    }
+  };
+
+  const handleOpenAnalysis = async (analysisId) => {
+    try {
+      const data = await apiClient(`/analyses/${analysisId}`);
+      setCurrentAnalysis(data);
+      setCurrentView('results');
+    } catch (err) {
+      alert('Failed to load analysis: ' + (err.message || 'Unknown error'));
+    }
   };
 
   if (isLoading) {
@@ -73,47 +118,56 @@ function MainLayout() {
         <Sidebar currentView={currentView} onNavigate={setCurrentView} />
         <main className="flex-1 overflow-y-auto">
           {currentView === 'dashboard' && <DashboardPage onNavigate={setCurrentView} />}
+          
           {currentView === 'resumes' && (
             <ResumeUploadPage
               onUploadSuccess={handleUploadSuccess}
               onCancel={() => setCurrentView('dashboard')}
             />
           )}
+
           {currentView === 'resume-review' && activeResumeId && (
             <ResumeReviewPage
               resumeId={activeResumeId}
-              onConfirmSuccess={handleConfirmSuccess}
+              onConfirmSuccess={handleConfirmProfileSuccess}
               onBack={() => setCurrentView('resumes')}
             />
           )}
+
           {currentView === 'analyze' && (
-            <div className="p-8 max-w-4xl mx-auto text-center py-20">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">New Match Analysis</h2>
-              <p className="text-muted-foreground text-sm max-w-md mx-auto mb-6">
-                Paste your target Job Description to compare against your verified resume requirements.
-              </p>
-              <button
-                onClick={() => setCurrentView('resumes')}
-                className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted"
-              >
-                Upload / Select Resume First
-              </button>
-            </div>
+            <JobDescriptionInputPage
+              onJdCreated={handleJdCreated}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
+
+          {currentView === 'results' && currentAnalysis && (
+            <AnalysisResultsPage
+              analysis={currentAnalysis}
+              onNewAnalysis={() => setCurrentView('analyze')}
+              onNavigate={setCurrentView}
+            />
+          )}
+
           {currentView === 'history' && (
-            <div className="p-8 max-w-4xl mx-auto text-center py-20">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Analysis History</h2>
-              <p className="text-muted-foreground text-sm">
-                Revisit, compare, and manage your past placement gap analyses.
-              </p>
-            </div>
+            <AnalysisHistoryPage
+              onOpenAnalysis={handleOpenAnalysis}
+              onNewAnalysis={() => setCurrentView('analyze')}
+            />
           )}
+
           {currentView === 'settings' && (
-            <div className="p-8 max-w-4xl mx-auto text-center py-20">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">Account & Settings</h2>
-              <p className="text-muted-foreground text-sm">
-                Manage profile, privacy disclosures, and account erasure controls.
-              </p>
+            <div className="p-8 max-w-4xl mx-auto space-y-6">
+              <h2 className="text-2xl font-bold text-foreground">Account & Privacy Settings</h2>
+              <div className="p-6 rounded-xl border border-border bg-card space-y-3">
+                <h3 className="font-semibold text-foreground text-base">Right to Erasure & Privacy</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  All uploaded resumes are stored in private Supabase Storage buckets protected by Row Level Security (RLS). You can delete any resume or completely delete your account at any time, cascading the deletion across all database tables and storage files.
+                </p>
+                <div className="pt-2">
+                  <span className="text-xs text-muted-foreground font-mono">User ID: {user?.id}</span>
+                </div>
+              </div>
             </div>
           )}
         </main>

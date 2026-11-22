@@ -9,8 +9,8 @@ import { env } from '../../config/env.js';
 class GeminiProvider {
   constructor(apiKey) {
     this.ai = new GoogleGenAI({ apiKey });
-    this.embeddingModel = 'text-embedding-004';
-    this.textModel = 'gemini-1.5-flash';
+    this.embeddingModel = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
+    this.textModel = process.env.GEMINI_CHAT_MODEL || 'gemini-3.5-flash-lite';
   }
 
   /**
@@ -23,11 +23,12 @@ class GeminiProvider {
         model: this.embeddingModel,
         contents: text,
         config: {
-          taskType
+          taskType,
+          outputDimensionality: 768
         }
       });
 
-      const values = response.embedding?.values;
+      const values = response.embedding?.values || response.embeddings?.[0]?.values;
       if (!values || values.length === 0) {
         throw new Error('No embedding vector returned by Gemini API.');
       }

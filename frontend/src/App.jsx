@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { ToastProvider, useToast } from './context/ToastContext.jsx';
 import { Navbar } from './components/layout/Navbar.jsx';
 import { Sidebar } from './components/layout/Sidebar.jsx';
 import { LandingPage } from './pages/LandingPage.jsx';
@@ -16,6 +17,7 @@ import { apiClient } from './lib/api.js';
 
 function MainLayout() {
   const { user, isLoading } = useAuth();
+  const { toast } = useToast();
   const [currentView, setCurrentView] = useState('dashboard');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState('login');
@@ -44,7 +46,7 @@ function MainLayout() {
     
     // If no resume uploaded yet, prompt to upload
     if (!activeResumeId) {
-      alert('Please upload and verify your resume first before matching against this job description.');
+      toast.warning('Please upload and verify your resume first before matching against this job description.', 'Resume Required');
       setCurrentView('resumes');
       return;
     }
@@ -62,7 +64,7 @@ function MainLayout() {
       setCurrentAnalysis(analysisData);
       setCurrentView('results');
     } catch (err) {
-      alert('Analysis error: ' + (err.message || 'Failed to calculate match score'));
+      toast.error(err.message || 'Failed to calculate match score', 'Analysis Failed');
     }
   };
 
@@ -72,7 +74,7 @@ function MainLayout() {
       setCurrentAnalysis(data);
       setCurrentView('results');
     } catch (err) {
-      alert('Failed to load analysis: ' + (err.message || 'Unknown error'));
+      toast.error(err.message || 'Unknown error', 'Failed to Load Analysis');
     }
   };
 
@@ -177,7 +179,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <MainLayout />
+        <ToastProvider>
+          <MainLayout />
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   );

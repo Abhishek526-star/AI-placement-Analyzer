@@ -5,8 +5,10 @@ import {
   ListOrdered, Layers, Target, Compass
 } from 'lucide-react';
 import { apiClient } from '../lib/api.js';
+import { useToast } from '../context/ToastContext.jsx';
 
 export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedSkill, setExpandedSkill] = useState(null);
@@ -68,7 +70,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
       });
       setQuestions(data || []);
     } catch (err) {
-      alert('Failed to load interview questions: ' + (err.message || 'Unknown error'));
+      toast.error(err.message || 'Failed to load interview questions', 'Rate Limit / API Error');
     } finally {
       setLoadingQuestions(false);
     }
@@ -84,7 +86,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
       });
       setRoadmap(data || []);
     } catch (err) {
-      alert('Failed to load learning roadmap: ' + (err.message || 'Unknown error'));
+      toast.error(err.message || 'Failed to load learning roadmap', 'Rate Limit / API Error');
     } finally {
       setLoadingRoadmap(false);
     }
@@ -99,7 +101,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
       });
       setSuggestions(data || []);
     } catch (err) {
-      alert('Failed to load resume suggestions: ' + (err.message || 'Unknown error'));
+      toast.error(err.message || 'Failed to load resume suggestions', 'Rate Limit / API Error');
     } finally {
       setLoadingSuggestions(false);
     }

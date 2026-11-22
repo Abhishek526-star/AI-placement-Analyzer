@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../lib/api.js';
 import { CheckCircle2, ShieldCheck, Plus, X, ArrowRight, Save, User, BookOpen, Briefcase, Code, Sparkles, Loader2 } from 'lucide-react';
+import { useToast } from '../context/ToastContext.jsx';
 
 export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
+  const { toast } = useToast();
   const [resume, setResume] = useState(null);
   const [profile, setProfile] = useState(null);
   const [skills, setSkills] = useState([]);
@@ -53,9 +55,10 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
         })
       });
       setSaving(false);
+      toast.success('Profile confirmed and saved successfully!', 'Profile Saved');
       onConfirmSuccess(resumeId);
     } catch (err) {
-      alert('Failed to save profile: ' + (err.message || 'Unknown error'));
+      toast.error(err.message || 'Unknown error', 'Failed to Save Profile');
       setSaving(false);
     }
   };

@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { apiClient } from '../lib/api.js';
 import { User, ShieldAlert, Trash2, Save, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { useToast } from '../context/ToastContext.jsx';
 
 export function ProfileSettingsPage({ onSignOut }) {
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
   const [profile, setProfile] = useState({ full_name: '', email: user?.email || '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,9 +55,11 @@ export function ProfileSettingsPage({ onSignOut }) {
       });
       setProfile((prev) => ({ ...prev, full_name: updated.full_name }));
       setSaveSuccess(true);
+      toast.success('Profile details saved successfully!', 'Saved');
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       setError(err.message || 'Failed to update profile');
+      toast.error(err.message || 'Failed to update profile', 'Update Failed');
     } finally {
       setSaving(false);
     }
@@ -67,13 +71,14 @@ export function ProfileSettingsPage({ onSignOut }) {
     try {
       await apiClient('/profile', { method: 'DELETE' });
       setShowDeleteModal(false);
+      toast.success('Your account and all associated data have been permanently erased.', 'Account Deleted');
       if (onSignOut) {
         onSignOut();
       } else {
         await signOut();
       }
     } catch (err) {
-      alert('Failed to delete account: ' + (err.message || 'Unknown error'));
+      toast.error(err.message || 'Unknown error', 'Failed to Delete Account');
       setDeleting(false);
     }
   };

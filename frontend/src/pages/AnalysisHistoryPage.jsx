@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../lib/api.js';
 import { Target, Clock, ArrowRight, Trash2, Edit2, Loader2, Sparkles, Check, X } from 'lucide-react';
+import { useToast } from '../context/ToastContext.jsx';
 
 export function AnalysisHistoryPage({ onOpenAnalysis, onNewAnalysis }) {
+  const { toast } = useToast();
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -31,9 +33,10 @@ export function AnalysisHistoryPage({ onOpenAnalysis, onNewAnalysis }) {
 
     try {
       await apiClient(`/analyses/${id}`, { method: 'DELETE' });
+      toast.success('Analysis deleted successfully', 'Deleted');
       fetchHistory();
     } catch (err) {
-      alert('Failed to delete analysis: ' + (err.message || 'Unknown error'));
+      toast.error(err.message || 'Unknown error', 'Failed to Delete Analysis');
     }
   };
 
@@ -52,10 +55,11 @@ export function AnalysisHistoryPage({ onOpenAnalysis, onNewAnalysis }) {
         method: 'PATCH',
         body: JSON.stringify({ title: editTitle.trim() })
       });
+      toast.success('Analysis title updated', 'Renamed');
       setEditingId(null);
       fetchHistory();
     } catch (err) {
-      alert('Failed to rename analysis: ' + (err.message || 'Unknown error'));
+      toast.error(err.message || 'Unknown error', 'Failed to Rename Analysis');
     }
   };
 

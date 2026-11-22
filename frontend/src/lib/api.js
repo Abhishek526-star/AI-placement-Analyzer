@@ -6,10 +6,18 @@ export async function apiClient(endpoint, options = {}) {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
 
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers || {}),
   };
+
+  // When sending FormData, the browser must automatically set Content-Type with multipart boundaries
+  if (isFormData) {
+    delete headers['Content-Type'];
+    delete headers['content-type'];
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

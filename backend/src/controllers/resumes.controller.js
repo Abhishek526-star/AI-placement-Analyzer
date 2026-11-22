@@ -62,14 +62,16 @@ export async function uploadResume(req, res, next) {
     // 6. Section-aware chunking & embedding generation (Phase 5 RAG)
     const chunks = chunkResume(extractedText, { documentId: resumeId, userId });
 
-    // Generate embeddings for chunks
-    for (const chunk of chunks) {
-      try {
-        chunk.embedding = await aiProvider.generateEmbedding(chunk.chunk_text, 'RETRIEVAL_DOCUMENT');
-      } catch (embErr) {
-        chunk.embedding = Array(768).fill(0.001);
-      }
-    }
+    // Generate embeddings for chunks in parallel
+    await Promise.all(
+      chunks.map(async (chunk) => {
+        try {
+          chunk.embedding = await aiProvider.generateEmbedding(chunk.chunk_text, 'RETRIEVAL_DOCUMENT');
+        } catch (embErr) {
+          chunk.embedding = Array(768).fill(0.001);
+        }
+      })
+    );
 
     // 7. Insert into resumes table
     const { data: resumeRecord, error: resumeErr } = await client

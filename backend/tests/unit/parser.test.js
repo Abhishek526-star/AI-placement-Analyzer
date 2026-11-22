@@ -105,6 +105,72 @@ TECHNICAL SKILLS
     expect(parsed_data.projects[1].duration).toBe('June 2026');
   });
 
+  it('leaves missing sections and contact links empty rather than creating placeholders', () => {
+    const sparseResume = `
+John Doe
+john.doe@example.com
+
+SKILLS
+Python, SQL
+
+EDUCATION
+MIT
+B.S. in Computer Science (2020 - 2024)
+`;
+
+    const { parsed_data } = extractSectionsAndProfile(sparseResume);
+
+    expect(parsed_data.contact.full_name).toBe('John Doe');
+    expect(parsed_data.contact.email).toBe('john.doe@example.com');
+    expect(parsed_data.contact.phone).toBe('');
+    expect(parsed_data.contact.linkedin).toBe('');
+    expect(parsed_data.contact.github).toBe('');
+
+    // Experience was not in the resume: must be empty array, no dummy company
+    expect(parsed_data.experience).toEqual([]);
+
+    // Projects was not in the resume: must be empty array, no dummy project
+    expect(parsed_data.projects).toEqual([]);
+
+    // Education was present
+    expect(parsed_data.education.length).toBe(1);
+    expect(parsed_data.education[0].institution).toBe('MIT');
+  });
+
+  it('parses Harvard-style resume with Work History and Academic Background correctly', () => {
+    const harvardResume = `
+Jane Smith
+jane.smith@harvard.edu | +1-617-555-0144 | linkedin.com/in/janesmith
+
+ACADEMIC BACKGROUND
+Harvard University, Cambridge, MA
+Bachelor of Arts in Computer Science (Sep 2021 – May 2025)
+
+WORK HISTORY
+Google LLC, Mountain View, CA
+Software Engineering Intern (June 2024 – August 2024)
+• Built scalable backend services using Go and gRPC.
+• Optimized query throughput by 25% across distributed databases.
+
+CORE COMPETENCIES
+Languages: Python, Java, SQL
+`;
+
+    const { parsed_data } = extractSectionsAndProfile(harvardResume);
+
+    expect(parsed_data.contact.full_name).toBe('Jane Smith');
+    expect(parsed_data.contact.github).toBe('');
+    expect(parsed_data.education.length).toBe(1);
+    expect(parsed_data.education[0].institution).toContain('Harvard University');
+    expect(parsed_data.education[0].degree).toContain('Bachelor of Arts in Computer Science');
+
+    expect(parsed_data.experience.length).toBe(1);
+    expect(parsed_data.experience[0].company).toContain('Google LLC');
+    expect(parsed_data.experience[0].bullets.length).toBe(2);
+
+    expect(parsed_data.projects).toEqual([]);
+  });
+
   it('detects technical skills with confidence and evidence', () => {
     const { skills, extraction_confidence } = extractSectionsAndProfile(sampleResume);
 

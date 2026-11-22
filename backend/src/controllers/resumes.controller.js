@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { validateFileBuffer } from '../services/parser/magicBytes.js';
 import { parsePdf } from '../services/parser/pdfParser.js';
 import { parseDocx } from '../services/parser/docxParser.js';
-import { extractSectionsAndProfile } from '../services/parser/sectionExtractor.js';
+import { extractSectionsAndProfile, extractAndVerifyProfile } from '../services/parser/sectionExtractor.js';
 import { chunkResume } from '../services/rag/chunker.js';
 import { getAIProvider } from '../services/ai/aiProvider.js';
 import { sendSuccess, sendPaginated } from '../utils/response.js';
@@ -58,10 +58,11 @@ export async function uploadResume(req, res, next) {
       extractedText = parsed.text;
     }
 
-    // 5. Extract structured profile & detected skills (pass rawBuffer and pdfLinks for link extraction)
-    const { parsed_data, skills, extraction_confidence } = extractSectionsAndProfile(extractedText, {
+    // 5. Extract structured profile & detected skills (hybrid AI verification pass with PDF links and buffer)
+    const { parsed_data, skills, extraction_confidence } = await extractAndVerifyProfile(extractedText, {
       rawBuffer: req.file.buffer,
-      links: pdfLinks
+      links: pdfLinks,
+      aiProvider
     });
 
     // 6. Section-aware chunking & embedding generation (Phase 5 RAG)

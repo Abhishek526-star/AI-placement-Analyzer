@@ -4,6 +4,7 @@ import { sendSuccess } from '../utils/response.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { getServiceClient } from '../config/supabase.js';
 import { generateResumeSuggestionsWithAI } from '../services/ai/resumeSuggestionsEngine.js';
+import { evaluateCandidateAnswer } from '../services/ai/answerEvaluationEngine.js';
 
 export async function getOrGenerateInterviewQuestions(req, res, next) {
   try {
@@ -308,6 +309,52 @@ export async function getOrGenerateResumeSuggestions(req, res, next) {
     }
 
     return sendSuccess(req, res, suggestions);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Feature 3: Evaluate Candidate Interview Answer (STAR Method + Technical Depth)
+ */
+export async function evaluateInterviewAnswer(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const analysisId = req.params.id;
+    const { question, category, difficulty, candidateAnswer } = req.body || {};
+    const client = req.supabase || getServiceClient();
+
+    if (!question || typeof question !== 'string') {
+      return next(new AppError('Interview question is required.', 400, 'INVALID_INPUT'));
+    }
+
+    if (!candidateAnswer || typeof candidateAnswer !== 'string' || !candidateAnswer.trim()) {
+      return next(new AppError('Candidate answer is required.', 400, 'EMPTY_ANSWER'));
+    }
+
+    const { data: analysis } = await client
+      .from('analyses')
+      .select('id, title, status')
+      .eq('id', analysisId)
+      .eq('user_id', userId)
+      .single();
+
+    if (!analysis) {
+      return next(new AppError('Analysis not found.', 404, 'ANALYSIS_NOT_FOUND'));
+    }
+
+    const aiProvider = getAIProvider();
+
+    const evaluation = await evaluateCandidateAnswer({
+      aiProvider,
+      question,
+      category,
+      difficulty,
+      candidateAnswer,
+      roleTitle: analysis.title || 'Software Engineer'
+    });
+
+    return sendSuccess(req, res, evaluation);
   } catch (err) {
     next(err);
   }

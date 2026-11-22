@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
   CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronUp, Quote, Sparkles,
   BookOpen, HelpCircle, Lightbulb, MapPin, Loader2, ArrowRight, ShieldCheck,
-  ListOrdered, Layers, Target, Compass, Printer, Download, FileText
+  ListOrdered, Layers, Target, Compass, Printer, Download, FileText,
+  Mic, Play, Award, RefreshCw, Send, Check
 } from 'lucide-react';
 import { apiClient } from '../lib/api.js';
 import { useToast } from '../context/ToastContext.jsx';
@@ -19,6 +20,12 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [expandedQuestion, setExpandedQuestion] = useState(null);
   const [filterCategory, setFilterCategory] = useState('all');
+
+  // Feature 3: Mock Interview Interactive Practice States
+  const [practicingIdx, setPracticingIdx] = useState(null);
+  const [candidateAnswers, setCandidateAnswers] = useState({});
+  const [evaluations, setEvaluations] = useState({});
+  const [evaluatingIdx, setEvaluatingIdx] = useState(null);
 
   const [roadmap, setRoadmap] = useState([]);
   const [loadingRoadmap, setLoadingRoadmap] = useState(false);
@@ -136,6 +143,41 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
     } catch (err) {
       setIsExporting(false);
       toast.error('Could not prepare PDF report. Please try again.', 'Export Failed');
+    }
+  };
+
+  // Feature 3: Evaluate Candidate Interview Answer via AI Evaluator
+  const handleEvaluateAnswer = async (idx, q) => {
+    const answer = candidateAnswers[idx] || '';
+    if (!answer.trim() || answer.trim().length < 15) {
+      toast.warning('Please enter a structured answer (at least 2–3 sentences) before submitting for evaluation.', 'Answer Too Short');
+      return;
+    }
+
+    setEvaluatingIdx(idx);
+    try {
+      const data = await apiClient(`/api/v1/career-intelligence/${analysis.id}/evaluate-answer`, {
+        method: 'POST',
+        body: JSON.stringify({
+          question: q.question,
+          category: q.category,
+          difficulty: q.difficulty,
+          candidateAnswer: answer
+        })
+      });
+
+      setEvaluations((prev) => ({
+        ...prev,
+        [idx]: data
+      }));
+      toast.success(
+        `Score: ${data.overall_score}/10 — ${data.overall_score >= 7.5 ? 'Strong Delivery' : 'Constructive Feedback Ready'}`,
+        'STAR Evaluation Complete'
+      );
+    } catch (err) {
+      toast.error(err.message || 'Evaluation failed. Please try again.', 'Evaluation Error');
+    } finally {
+      setEvaluatingIdx(null);
     }
   };
 
@@ -486,13 +528,19 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
               <div className="space-y-3">
                 {filteredQuestions.map((q, idx) => {
                   const isExp = expandedQuestion === idx;
+                  const isPracticing = practicingIdx === idx;
+                  const currentAnswer = candidateAnswers[idx] || '';
+                  const evalResult = evaluations[idx];
+                  const isEvaluating = evaluatingIdx === idx;
+                  const wordCount = currentAnswer.trim() ? currentAnswer.trim().split(/\s+/).length : 0;
+
                   return (
-                    <div key={idx} className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-2 hover:border-slate-700 transition-all">
-                      <div
-                        onClick={() => setExpandedQuestion(isExp ? null : idx)}
-                        className="flex items-start justify-between cursor-pointer select-none"
-                      >
-                        <div className="space-y-1">
+                    <div key={idx} className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-3 hover:border-slate-700 transition-all">
+                      <div className="flex items-start justify-between gap-3">
+                        <div
+                          onClick={() => setExpandedQuestion(isExp ? null : idx)}
+                          className="space-y-1 cursor-pointer select-none flex-1"
+                        >
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase bg-primary/10 text-primary border border-primary/20">
                               {q.category.replace('_', ' ')}
@@ -503,11 +551,37 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                           </div>
                           <h4 className="font-semibold text-sm text-foreground pt-1">{q.question}</h4>
                         </div>
-                        {isExp ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPracticingIdx(isPracticing ? null : idx);
+                              if (!isExp) setExpandedQuestion(idx);
+                            }}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                              isPracticing
+                                ? 'bg-primary text-white border-primary shadow-sm'
+                                : 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/20'
+                            }`}
+                          >
+                            <Mic className="w-3.5 h-3.5" />
+                            <span>{isPracticing ? 'Hide Practice' : 'Practice Answer'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setExpandedQuestion(isExp ? null : idx)}
+                            className="p-1 rounded text-muted-foreground hover:text-foreground"
+                          >
+                            {isExp ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </div>
 
                       {isExp && (
-                        <div className="mt-3 pt-3 border-t border-border space-y-2 text-xs">
+                        <div className="mt-3 pt-3 border-t border-border space-y-3 text-xs">
                           {q.why_relevant && (
                             <p className="text-muted-foreground">
                               <span className="font-semibold text-foreground">Why It Matters: </span>
@@ -518,6 +592,220 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                             <div className="p-3 rounded-xl bg-background/80 border border-border text-foreground space-y-1">
                               <span className="font-semibold text-primary block">Suggested Answer Outline:</span>
                               <p className="text-muted-foreground leading-relaxed">{q.answer_outline}</p>
+                            </div>
+                          )}
+
+                          {/* Interactive Practice Box */}
+                          {isPracticing && (
+                            <div className="p-4 rounded-xl bg-background/90 border border-primary/30 space-y-3 mt-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                  <span className="font-bold text-foreground text-xs uppercase tracking-wide">
+                                    AI Mock Interview Practice Studio
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
+                                  <span>STAR Framework Guide:</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-muted text-foreground">S</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-muted text-foreground">T</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-muted text-foreground">A</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-muted text-foreground">R</span>
+                                </div>
+                              </div>
+
+                              {/* STAR Guidance Hints */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+                                <div className="p-1.5 rounded bg-card border border-border">
+                                  <strong className="text-indigo-400 block font-mono">S • Situation</strong>
+                                  <span className="text-muted-foreground">Context & project background</span>
+                                </div>
+                                <div className="p-1.5 rounded bg-card border border-border">
+                                  <strong className="text-cyan-400 block font-mono">T • Task</strong>
+                                  <span className="text-muted-foreground">Engineering goal or problem</span>
+                                </div>
+                                <div className="p-1.5 rounded bg-card border border-border">
+                                  <strong className="text-emerald-400 block font-mono">A • Action</strong>
+                                  <span className="text-muted-foreground">Architecture & tools used</span>
+                                </div>
+                                <div className="p-1.5 rounded bg-card border border-border">
+                                  <strong className="text-amber-400 block font-mono">R • Result</strong>
+                                  <span className="text-muted-foreground">Quantified metrics & latency</span>
+                                </div>
+                              </div>
+
+                              {/* Candidate Input Textarea */}
+                              <div className="space-y-1.5">
+                                <textarea
+                                  rows={4}
+                                  value={currentAnswer}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setCandidateAnswers((prev) => ({ ...prev, [idx]: val }));
+                                  }}
+                                  placeholder="Type your interview response using the STAR method... e.g. In my project (Situation), our objective was to prevent race conditions during checkout (Task). I implemented MongoDB ACID transactions with optimistic locking (Action), which eliminated duplicate orders and cut latency to under 80ms (Result)..."
+                                  className="w-full p-3 rounded-xl bg-card border border-border text-foreground text-xs leading-relaxed focus:outline-none focus:border-primary/60 font-mono transition-all resize-y"
+                                />
+                                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+                                  <span>{wordCount} words {wordCount < 15 && <span className="text-amber-400 italic">(aim for 40+ words)</span>}</span>
+                                  <div className="flex items-center gap-2">
+                                    {currentAnswer && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setCandidateAnswers((prev) => ({ ...prev, [idx]: '' }));
+                                          setEvaluations((prev) => {
+                                            const copy = { ...prev };
+                                            delete copy[idx];
+                                            return copy;
+                                          });
+                                        }}
+                                        className="text-muted-foreground hover:text-foreground underline text-[11px]"
+                                      >
+                                        Clear
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      disabled={isEvaluating || !currentAnswer.trim()}
+                                      onClick={() => handleEvaluateAnswer(idx, q)}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all shadow-sm"
+                                    >
+                                      {isEvaluating ? (
+                                        <>
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          <span>Grading Answer...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Sparkles className="w-3.5 h-3.5" />
+                                          <span>Submit for AI Evaluation</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* AI Evaluation Results Panel */}
+                              {evalResult && (
+                                <div className="mt-4 pt-4 border-t border-border space-y-3.5 animate-fadeIn">
+                                  {/* Score Header */}
+                                  <div className="p-3.5 rounded-xl border border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="space-y-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <Award className="w-4 h-4 text-primary" />
+                                        <span className="font-bold text-foreground text-xs">Overall Performance Rating</span>
+                                      </div>
+                                      <p className="text-muted-foreground text-[11px]">{evalResult.summary}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <span
+                                        className={`px-3 py-1 rounded-full text-xs font-bold font-mono border ${
+                                          evalResult.overall_score >= 7.5
+                                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                            : evalResult.overall_score >= 5.5
+                                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                                            : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                                        }`}
+                                      >
+                                        {evalResult.overall_score} / 10
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* STAR Adherence Breakdown */}
+                                  {evalResult.star_analysis && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                      {Object.entries(evalResult.star_analysis).map(([key, item]) => (
+                                        <div
+                                          key={key}
+                                          className={`p-2.5 rounded-lg border ${
+                                            item.detected
+                                              ? 'bg-emerald-500/5 border-emerald-500/20'
+                                              : 'bg-amber-500/5 border-amber-500/20'
+                                          }`}
+                                        >
+                                          <div className="flex items-center justify-between mb-1">
+                                            <span className="font-bold uppercase tracking-wider text-[10px] text-foreground font-mono">
+                                              {key}
+                                            </span>
+                                            <span
+                                              className={`text-[10px] font-semibold uppercase ${
+                                                item.detected ? 'text-emerald-400' : 'text-amber-400'
+                                              }`}
+                                            >
+                                              {item.detected ? '✓ Detected' : '⚠️ Missing'}
+                                            </span>
+                                          </div>
+                                          <p className="text-muted-foreground text-[11px]">{item.feedback}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Technical Strengths and Gaps */}
+                                  {evalResult.technical_depth && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                      {evalResult.technical_depth.strengths?.length > 0 && (
+                                        <div className="p-2.5 rounded-lg bg-card border border-border space-y-1">
+                                          <span className="font-bold text-emerald-400 text-[10px] uppercase block">
+                                            Key Strengths Detected:
+                                          </span>
+                                          <ul className="space-y-1 text-muted-foreground text-[11px]">
+                                            {evalResult.technical_depth.strengths.map((str, sIdx) => (
+                                              <li key={sIdx} className="flex items-start gap-1.5">
+                                                <span className="text-emerald-400">✓</span>
+                                                <span>{str}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+
+                                      {evalResult.technical_depth.missing_concepts?.length > 0 && (
+                                        <div className="p-2.5 rounded-lg bg-card border border-border space-y-1">
+                                          <span className="font-bold text-amber-400 text-[10px] uppercase block">
+                                            Recommended Improvements:
+                                          </span>
+                                          <ul className="space-y-1 text-muted-foreground text-[11px]">
+                                            {evalResult.technical_depth.missing_concepts.map((g, gIdx) => (
+                                              <li key={gIdx} className="flex items-start gap-1.5">
+                                                <span className="text-amber-400">•</span>
+                                                <span>{g}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Senior SDE Model Phrasing */}
+                                  {evalResult.improved_model_answer && (
+                                    <div className="p-3.5 rounded-xl bg-card border border-border space-y-1.5">
+                                      <div className="flex items-center gap-1.5">
+                                        <Award className="w-3.5 h-3.5 text-primary" />
+                                        <strong className="text-foreground text-xs">Senior SDE Model Phrasing:</strong>
+                                      </div>
+                                      <p className="text-muted-foreground italic bg-background/80 p-2.5 rounded-lg border border-border leading-relaxed text-[11px]">
+                                        "{evalResult.improved_model_answer}"
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Coaching Tip */}
+                                  {evalResult.coaching_tip && (
+                                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2 text-xs">
+                                      <Lightbulb className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                      <div>
+                                        <strong className="text-foreground block text-[11px]">Interview Coach Tip:</strong>
+                                        <p className="text-muted-foreground text-[11px] mt-0.5">{evalResult.coaching_tip}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

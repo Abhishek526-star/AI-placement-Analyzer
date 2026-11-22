@@ -4,6 +4,10 @@ import {
   generateDomainSuggestion,
   generateResumeSuggestionsWithAI
 } from '../../src/services/ai/resumeSuggestionsEngine.js';
+import {
+  evaluateCandidateAnswer,
+  evaluateWithHeuristics
+} from '../../src/services/ai/answerEvaluationEngine.js';
 
 describe('Career Intelligence & Honest Suggestions (PRD FR-10, FR-11, FR-12)', () => {
   const allowedCategories = [
@@ -160,5 +164,40 @@ describe('Career Intelligence & Honest Suggestions (PRD FR-10, FR-11, FR-12)', (
     expect(docker.target_quote).toBeNull();
     expect(docker.classification).toBe('general_guidance');
     expect(docker.suggestion).toContain('containeriz');
+  });
+
+  describe('Feature 3: AI Mock Interview Answer Evaluation Engine', () => {
+    it('handles short or empty answers with low score and clear advice to use STAR structure', async () => {
+      const result = await evaluateCandidateAnswer({
+        aiProvider: null,
+        question: 'How did you handle authentication?',
+        candidateAnswer: 'I used JWT.'
+      });
+
+      expect(result.overall_score).toBeLessThanOrEqual(3.0);
+      expect(result.star_analysis.situation.detected).toBe(false);
+      expect(result.star_analysis.result.detected).toBe(false);
+      expect(result.improved_model_answer).toBeDefined();
+    });
+
+    it('evaluates a complete STAR answer with high score and detailed feedback', async () => {
+      const starAnswer = `In Pharma Plus (Situation), we needed to secure user authentication and protect order routes against CSRF (Task).
+I implemented JWT session management with bcrypt hashing and HTTP-only cookies, combined with a custom Express middleware to verify token signatures (Action).
+This resulted in zero unauthorized access vulnerabilities and kept authentication overhead below 15ms per request (Result).`;
+
+      const result = await evaluateCandidateAnswer({
+        aiProvider: null,
+        question: 'How did you implement secure authentication in your project?',
+        candidateAnswer: starAnswer,
+        roleTitle: 'Full Stack Engineer'
+      });
+
+      expect(result.overall_score).toBeGreaterThanOrEqual(7.0);
+      expect(result.star_analysis.situation.detected).toBe(true);
+      expect(result.star_analysis.action.detected).toBe(true);
+      expect(result.star_analysis.result.detected).toBe(true);
+      expect(result.technical_depth.strengths.length).toBeGreaterThan(0);
+      expect(result.coaching_tip).toBeDefined();
+    });
   });
 });

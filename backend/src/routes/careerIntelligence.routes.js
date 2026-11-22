@@ -2,7 +2,8 @@ import { Router } from 'express';
 import {
   getOrGenerateInterviewQuestions,
   getOrGenerateRoadmap,
-  getOrGenerateResumeSuggestions
+  getOrGenerateResumeSuggestions,
+  evaluateInterviewAnswer
 } from '../controllers/careerIntelligence.controller.js';
 import { careerIntelligenceLimiter } from '../middleware/rateLimiter.js';
 
@@ -12,5 +13,6 @@ const router = Router();
 router.post('/:id/interview-questions', careerIntelligenceLimiter, getOrGenerateInterviewQuestions);
 router.post('/:id/roadmap', careerIntelligenceLimiter, getOrGenerateRoadmap);
 router.post('/:id/resume-suggestions', careerIntelligenceLimiter, getOrGenerateResumeSuggestions);
+router.post('/:id/evaluate-answer', careerIntelligenceLimiter, evaluateInterviewAnswer);
 
 export default router;

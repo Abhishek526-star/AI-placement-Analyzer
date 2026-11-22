@@ -4,6 +4,7 @@ import { apiClient } from '../lib/api.js';
 import { POPULAR_JOB_CATEGORIES } from '../constants/jobRoles.js';
 import { JobTitleSelect } from '../components/JobTitleSelect.jsx';
 import { ExperienceLevelSelect } from '../components/ExperienceLevelSelect.jsx';
+import { CompanySelect } from '../components/CompanySelect.jsx';
 
 export function JobDescriptionInputPage({ onJdCreated, onBack }) {
   // Default to first popular role
@@ -12,7 +13,9 @@ export function JobDescriptionInputPage({ onJdCreated, onBack }) {
   const [selectedRole, setSelectedRole] = useState(defaultRole);
   const [customTitle, setCustomTitle] = useState('');
   const [title, setTitle] = useState(defaultRole);
-  const [company, setCompany] = useState('');
+  const [selectedCompany, setSelectedCompany] = useState('Google');
+  const [customCompany, setCustomCompany] = useState('');
+  const [company, setCompany] = useState('Google');
   const [experienceLevel, setExperienceLevel] = useState('Entry Level (0-2 years)');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
@@ -37,14 +40,22 @@ export function JobDescriptionInputPage({ onJdCreated, onBack }) {
     }
   };
 
+  const handleCompanyChange = (newCompany) => {
+    setSelectedCompany(newCompany);
+    if (newCompany === 'custom') {
+      setCompany(customCompany);
+    } else {
+      setCompany(newCompany);
+    }
+  };
+
   const handleLoadSampleJd = () => {
     for (const cat of POPULAR_JOB_CATEGORIES) {
       const found = cat.roles.find((r) => r.title === selectedRole);
       if (found && found.sampleJd) {
         setDescription(found.sampleJd);
-        if (!company.trim()) {
-          setCompany('TechCorp Solutions');
-        }
+        setSelectedCompany('TechCorp Solutions');
+        setCompany('TechCorp Solutions');
         if (found.experience) {
           setExperienceLevel(found.experience);
         }
@@ -71,6 +82,7 @@ export function JobDescriptionInputPage({ onJdCreated, onBack }) {
     setError(null);
 
     const effectiveTitle = selectedRole === 'custom' ? customTitle.trim() : title.trim();
+    const effectiveCompany = selectedCompany === 'custom' ? customCompany.trim() : (company || '').trim();
 
     if (!effectiveTitle) {
       setError('Please provide a valid Job Title.');
@@ -88,7 +100,7 @@ export function JobDescriptionInputPage({ onJdCreated, onBack }) {
         method: 'POST',
         body: JSON.stringify({
           title: effectiveTitle,
-          company: company.trim(),
+          company: effectiveCompany,
           experience_level: experienceLevel,
           location: location.trim(),
           description
@@ -150,17 +162,15 @@ export function JobDescriptionInputPage({ onJdCreated, onBack }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1">Company</label>
-            <div className="relative">
-              <Building className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                placeholder="e.g. Google, Amazon, Startup"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+            <CompanySelect
+              value={selectedCompany}
+              onChange={handleCompanyChange}
+              customCompany={customCompany}
+              onCustomCompanyChange={(val) => {
+                setCustomCompany(val);
+                setCompany(val);
+              }}
+            />
           </div>
 
           <div>

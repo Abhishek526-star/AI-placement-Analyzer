@@ -4,12 +4,13 @@ import {
   getOrGenerateRoadmap,
   getOrGenerateResumeSuggestions
 } from '../controllers/careerIntelligence.controller.js';
-import { analysisTriggerLimiter } from '../middleware/rateLimiter.js';
+import { careerIntelligenceLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
-router.post('/:id/interview-questions', analysisTriggerLimiter, getOrGenerateInterviewQuestions);
-router.post('/:id/roadmap', analysisTriggerLimiter, getOrGenerateRoadmap);
-router.post('/:id/resume-suggestions', analysisTriggerLimiter, getOrGenerateResumeSuggestions);
+// Dedicated limiter so tab navigation never consumes the heavy analysis creation quota
+router.post('/:id/interview-questions', careerIntelligenceLimiter, getOrGenerateInterviewQuestions);
+router.post('/:id/roadmap', careerIntelligenceLimiter, getOrGenerateRoadmap);
+router.post('/:id/resume-suggestions', careerIntelligenceLimiter, getOrGenerateResumeSuggestions);
 
 export default router;

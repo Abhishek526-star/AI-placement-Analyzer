@@ -9,35 +9,51 @@ import { env } from '../../config/env.js';
 class GeminiProvider {
   constructor(apiKey) {
     this.ai = new GoogleGenAI({ apiKey });
-    this.embeddingModel = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
-    this.textModel = process.env.GEMINI_CHAT_MODEL || 'gemini-3.5-flash-lite';
+    this.embeddingModels = [
+      process.env.GEMINI_EMBEDDING_MODEL,
+      'gemini-embedding-001',
+      'gemini-embedding-2'
+    ].filter((m, i, arr) => m && arr.indexOf(m) === i);
+
+    this.textModels = [
+      process.env.GEMINI_CHAT_MODEL,
+      'gemini-3.5-flash-lite',
+      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-3.8-flash'
+    ].filter((m, i, arr) => m && arr.indexOf(m) === i);
   }
 
   /**
-   * Generates a 768-dimensional embedding vector.
+   * Generates a 768-dimensional embedding vector with automatic model cascade.
    * taskType: 'RETRIEVAL_DOCUMENT' (for indexing) | 'RETRIEVAL_QUERY' (for search)
    */
   async generateEmbedding(text, taskType = 'RETRIEVAL_DOCUMENT') {
-    try {
-      const response = await this.ai.models.embedContent({
-        model: this.embeddingModel,
-        contents: text,
-        config: {
-          taskType,
-          outputDimensionality: 768
+    let lastError = null;
+
+    for (const model of this.embeddingModels) {
+      try {
+        const response = await this.ai.models.embedContent({
+          model,
+          contents: text,
+          config: {
+            taskType,
+            outputDimensionality: 768
+          }
+        });
+
+        const values = response.embedding?.values || response.embeddings?.[0]?.values;
+        if (values && values.length > 0) {
+          return values.slice(0, 768);
         }
-      });
-
-      const values = response.embedding?.values || response.embeddings?.[0]?.values;
-      if (!values || values.length === 0) {
-        throw new Error('No embedding vector returned by Gemini API.');
+      } catch (err) {
+        lastError = err;
+        console.warn(`[GeminiEmbeddingCascade] Model ${model} failed (${err.message}). Trying next candidate...`);
       }
-
-      return values.slice(0, 768);
-    } catch (err) {
-      console.warn('[GeminiEmbeddingError] Falling back to zero-vector:', err.message);
-      return Array(768).fill(0.001);
     }
+
+    console.warn('[GeminiEmbeddingError] All models failed, falling back to zero-vector:', lastError?.message);
+    return Array(768).fill(0.001);
   }
 
   async generateEmbeddingsBatch(texts, taskType = 'RETRIEVAL_DOCUMENT') {
@@ -46,26 +62,34 @@ class GeminiProvider {
 
   /**
    * Generates structured JSON adhering to the supplied schema at low temperature.
+   * Cascades through backup models on 503 (high demand) or 429 (rate limit).
    */
   async generateStructuredJSON({ systemPrompt, userPrompt, temperature = 0.1 }) {
-    try {
-      const response = await this.ai.models.generateContent({
-        model: this.textModel,
-        contents: [
-          { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
-        ],
-        config: {
-          temperature,
-          responseMimeType: 'application/json'
-        }
-      });
+    let lastError = null;
 
-      const rawText = response.text?.trim() || '{}';
-      return JSON.parse(rawText);
-    } catch (err) {
-      console.warn('[GeminiGenerateError]:', err.message);
-      throw err;
+    for (const model of this.textModels) {
+      try {
+        const response = await this.ai.models.generateContent({
+          model,
+          contents: [
+            { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
+          ],
+          config: {
+            temperature,
+            responseMimeType: 'application/json'
+          }
+        });
+
+        const rawText = response.text?.trim() || '{}';
+        return JSON.parse(rawText);
+      } catch (err) {
+        lastError = err;
+        console.warn(`[GeminiCascade] Model ${model} unavailable (${err.message}). Cascading to next backup model...`);
+      }
     }
+
+    console.warn('[GeminiGenerateError] All candidate models exhausted:', lastError?.message);
+    throw lastError;
   }
 }
 

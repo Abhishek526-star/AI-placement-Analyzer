@@ -1,4 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import {
+  findBestResumeQuote,
+  generateDomainSuggestion,
+  generateResumeSuggestionsWithAI
+} from '../../src/services/ai/resumeSuggestionsEngine.js';
 
 describe('Career Intelligence & Honest Suggestions (PRD FR-10, FR-11, FR-12)', () => {
   const allowedCategories = [
@@ -55,5 +60,105 @@ describe('Career Intelligence & Honest Suggestions (PRD FR-10, FR-11, FR-12)', (
 
     expect(step.effort_disclaimer).toBeDefined();
     expect(step.effort_disclaimer).toContain('non-guaranteed');
+  });
+
+  it('findBestResumeQuote resolves exact project bullets rather than generic skills section dump', () => {
+    const projects = [
+      {
+        name: 'Pharma Plus',
+        bullets: [
+          'Built a full-stack MERN pharmacy platform with medicine search, persistent cart, and order tracking, using Redux Toolkit and Tailwind CSS for responsive UI.',
+          'Integrated Razorpay payment gateway with server-side signature verification and Cash-on-Delivery option via REST APIs.'
+        ]
+      },
+      {
+        name: 'Expense Manager',
+        bullets: [
+          'Engineered RESTful APIs using Node.js and Express with MongoDB and Mongoose for complete income and expense tracking.'
+        ]
+      }
+    ];
+
+    const rawSkillsDump = '- Frontend & Backend: HTML, CSS, React.js, Node.js, Express.js, Tailwind CSS, REST APIs, Socket.IO, WebSockets';
+
+    const tailwindQuote = findBestResumeQuote('Tailwind CSS', projects, [], rawSkillsDump);
+    expect(tailwindQuote).toContain('Tailwind CSS');
+    expect(tailwindQuote).toContain('pharmacy platform');
+    expect(tailwindQuote).not.toContain('- Frontend & Backend: HTML, CSS');
+
+    const nodeQuote = findBestResumeQuote('Node.js', projects, [], rawSkillsDump);
+    expect(nodeQuote).toContain('Node.js');
+    expect(nodeQuote).toContain('Express with MongoDB');
+    expect(nodeQuote).not.toContain('- Frontend & Backend: HTML, CSS');
+
+    const razorpayQuote = findBestResumeQuote('Razorpay', projects, [], '');
+    expect(razorpayQuote).toContain('Razorpay payment gateway');
+  });
+
+  it('generateDomainSuggestion ensures diverse, non-templated advice across different skills', () => {
+    const skills = [
+      'Tailwind CSS',
+      'Node.js',
+      'Express.js',
+      'REST API Development',
+      'React',
+      'MongoDB',
+      'Data Structures and Algorithms',
+      'Object-Oriented Programming'
+    ];
+
+    const suggestions = skills.map((s) => generateDomainSuggestion(s, 'improve_wording'));
+
+    // Check that every single skill receives a unique recommendation
+    const uniqueSet = new Set(suggestions);
+    expect(uniqueSet.size).toBe(skills.length);
+
+    // Verify no suggestion uses the old lazy template
+    for (const sugg of suggestions) {
+      expect(sugg).not.toContain('Quantify measurable impact for');
+      expect(sugg.length).toBeGreaterThan(30);
+    }
+  });
+
+  it('generateResumeSuggestionsWithAI produces evidence-first suggestions adhering to PRD FR-12', async () => {
+    const projects = [
+      {
+        name: 'Pharma Plus',
+        bullets: [
+          'Built a full-stack pharmacy platform with medicine search and order tracking using Tailwind CSS.',
+          'Integrated Razorpay payment gateway with server-side signature verification.'
+        ]
+      }
+    ];
+
+    const skillMatches = [
+      { skill_name: 'Tailwind CSS', status: 'matched', resume_evidence: [{ quote: 'Tailwind CSS in skills' }] },
+      { skill_name: 'Next.js', status: 'partially_matched', resume_evidence: [{ quote: 'Related frontend React' }] },
+      { skill_name: 'Docker', status: 'missing', resume_evidence: [] }
+    ];
+
+    const suggestions = await generateResumeSuggestionsWithAI({
+      aiProvider: null,
+      analysis: { title: 'Full Stack Engineer' },
+      projects,
+      experience: [],
+      skillMatches
+    });
+
+    expect(suggestions.length).toBe(3);
+
+    const tailwind = suggestions.find((s) => s.target_skill === 'Tailwind CSS');
+    expect(tailwind.category).toBe('improve_wording');
+    expect(tailwind.target_quote).toContain('Tailwind CSS');
+    expect(tailwind.suggestion).not.toContain('Quantify measurable impact for');
+
+    const nextjs = suggestions.find((s) => s.target_skill === 'Next.js');
+    expect(nextjs.category).toBe('highlight_existing_skill');
+
+    const docker = suggestions.find((s) => s.target_skill === 'Docker');
+    expect(docker.category).toBe('acquire_new_skill');
+    expect(docker.target_quote).toBeNull();
+    expect(docker.classification).toBe('general_guidance');
+    expect(docker.suggestion).toContain('containeriz');
   });
 });

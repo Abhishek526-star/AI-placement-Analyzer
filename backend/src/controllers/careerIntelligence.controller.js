@@ -3,6 +3,7 @@ import { getAIProvider } from '../services/ai/aiProvider.js';
 import { sendSuccess } from '../utils/response.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { getServiceClient } from '../config/supabase.js';
+import { generateResumeSuggestionsWithAI } from '../services/ai/resumeSuggestionsEngine.js';
 
 export async function getOrGenerateInterviewQuestions(req, res, next) {
   try {
@@ -237,11 +238,12 @@ export async function getOrGenerateResumeSuggestions(req, res, next) {
   try {
     const userId = req.user.id;
     const analysisId = req.params.id;
+    const { regenerate = false } = req.body || {};
     const client = req.supabase || getServiceClient();
 
     const { data: analysis } = await client
       .from('analyses')
-      .select('id, resume_id, analysis_result')
+      .select('id, resume_id, job_description_id, status, title, analysis_result')
       .eq('id', analysisId)
       .eq('user_id', userId)
       .single();
@@ -250,46 +252,59 @@ export async function getOrGenerateResumeSuggestions(req, res, next) {
       return next(new AppError('Analysis not found.', 404, 'ANALYSIS_NOT_FOUND'));
     }
 
-    const { data: matches } = await client
-      .from('analysis_skill_matches')
-      .select('skill_name, status, resume_evidence')
-      .eq('analysis_id', analysisId);
-
-    const suggestions = [];
-
-    // Honest categorization rule:
-    // 1. improve_wording: for existing matched skills
-    for (const m of (matches || []).filter((m) => m.status === 'matched')) {
-      const quote = m.resume_evidence?.[0]?.quote || `Experience with ${m.skill_name}`;
-      suggestions.push({
-        category: 'improve_wording',
-        target_skill: m.skill_name,
-        target_quote: quote,
-        suggestion: `Quantify measurable impact for ${m.skill_name} (e.g., latency, throughput, scale, test coverage).`,
-        classification: 'evidence_based'
-      });
+    // 1. Return cached suggestions unless regenerate: true or cache contains legacy templated text
+    if (!regenerate && Array.isArray(analysis?.analysis_result?.recommendations) && analysis.analysis_result.recommendations.length > 0) {
+      const isOldTemplated = analysis.analysis_result.recommendations.some(
+        (r) => (r.suggestion && r.suggestion.includes('Quantify measurable impact for')) ||
+               (r.suggestion && r.suggestion.includes('Build a concrete portfolio project incorporating'))
+      );
+      if (!isOldTemplated) {
+        return sendSuccess(req, res, analysis.analysis_result.recommendations);
+      }
     }
 
-    // 2. highlight_existing_skill: for partially matched skills
-    for (const m of (matches || []).filter((m) => m.status === 'partially_matched')) {
-      suggestions.push({
-        category: 'highlight_existing_skill',
-        target_skill: m.skill_name,
-        target_quote: m.resume_evidence?.[0]?.quote || '',
-        suggestion: `Make your hands-on usage of ${m.skill_name} more explicit in your project bullet points.`,
-        classification: 'evidence_based'
-      });
-    }
+    // 2. Fetch matched skills, resume profile (projects, experience), and JD
+    const [matchesRes, profileRes, jdRes] = await Promise.all([
+      client.from('analysis_skill_matches')
+        .select('skill_name, status, jd_importance, weight, resume_evidence')
+        .eq('analysis_id', analysisId),
+      client.from('resume_profiles')
+        .select('parsed_data')
+        .eq('resume_id', analysis.resume_id)
+        .maybeSingle(),
+      analysis.job_description_id
+        ? client.from('job_descriptions').select('title, company, description').eq('id', analysis.job_description_id).maybeSingle()
+        : Promise.resolve({ data: null })
+    ]);
 
-    // 3. acquire_new_skill: for missing skills (NEVER recommend fabricating experience)
-    for (const m of (matches || []).filter((m) => m.status === 'missing').slice(0, 3)) {
-      suggestions.push({
-        category: 'acquire_new_skill',
-        target_skill: m.skill_name,
-        target_quote: null,
-        suggestion: `Build a concrete portfolio project incorporating ${m.skill_name} before adding it to your resume.`,
-        classification: 'general_guidance'
-      });
+    const projects = profileRes.data?.parsed_data?.projects || [];
+    const experience = profileRes.data?.parsed_data?.experience || [];
+    const jdInfo = jdRes.data || {};
+    const skillMatches = matchesRes.data || [];
+    const aiProvider = getAIProvider();
+
+    // 3. Grounded generation with project-level quote resolution and domain catalog fallback
+    const suggestions = await generateResumeSuggestionsWithAI({
+      aiProvider,
+      analysis,
+      jobDescription: jdInfo,
+      projects,
+      experience,
+      skillMatches
+    });
+
+    // 4. Cache non-templated suggestions in analysis_result.recommendations for fast subsequent loads
+    try {
+      const updatedResult = {
+        ...(analysis.analysis_result || {}),
+        recommendations: suggestions
+      };
+      await client
+        .from('analyses')
+        .update({ analysis_result: updatedResult })
+        .eq('id', analysisId);
+    } catch (updateErr) {
+      console.warn('[CacheSuggestionsWarning] Failed to update recommendations in analyses table:', updateErr.message);
     }
 
     return sendSuccess(req, res, suggestions);

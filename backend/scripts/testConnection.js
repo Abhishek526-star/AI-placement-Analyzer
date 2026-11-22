@@ -18,6 +18,15 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 console.log(`📡 Target URL: ${supabaseUrl}`);
 
+if ((supabaseUrl.includes('127.0.0.1') || supabaseUrl.includes('localhost')) && (supabaseAnonKey?.startsWith('sb_') || supabaseServiceKey?.startsWith('sb_'))) {
+  console.warn("\n⚠️ CONFIGURATION MISMATCH DETECTED:");
+  console.warn("   You have configured Supabase Cloud API keys ('sb_publishable_...' / 'sb_secret_...'),");
+  console.warn("   but your SUPABASE_URL is still set to the local default ('http://127.0.0.1:54321')!\n");
+  console.warn("   👉 Go to your Supabase Dashboard -> Project Settings -> API");
+  console.warn("   👉 Copy your 'Project URL' (e.g. https://xyzabcdefgh.supabase.co)");
+  console.warn("   👉 Replace 'http://127.0.0.1:54321' with your Project URL in both backend/.env and frontend/.env\n");
+}
+
 const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { persistSession: false, autoRefreshToken: false }
 });

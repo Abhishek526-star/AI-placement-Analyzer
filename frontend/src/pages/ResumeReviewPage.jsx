@@ -108,42 +108,51 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
         {/* Left Pane (7 cols): Editable Form */}
         <div className="lg:col-span-7 space-y-6">
           {/* Sub Navigation Tabs */}
-          <div className="flex items-center gap-2 p-1 rounded-xl bg-muted/60 border border-border">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/60 border border-border">
             <button
               onClick={() => setActiveTab('skills')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'skills' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Code className="w-4 h-4 text-primary" />
+              <Code className="w-3.5 h-3.5 text-primary" />
               <span>Skills ({skills.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('contact')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'contact' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <User className="w-4 h-4 text-indigo-500" />
+              <User className="w-3.5 h-3.5 text-indigo-500" />
               <span>Contact</span>
             </button>
             <button
+              onClick={() => setActiveTab('experience')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === 'experience' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Briefcase className="w-3.5 h-3.5 text-sky-500" />
+              <span>Experience ({profile?.experience?.length || 0})</span>
+            </button>
+            <button
               onClick={() => setActiveTab('projects')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'projects' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Briefcase className="w-4 h-4 text-amber-500" />
-              <span>Projects</span>
+              <Briefcase className="w-3.5 h-3.5 text-amber-500" />
+              <span>Projects ({profile?.projects?.length || 0})</span>
             </button>
             <button
               onClick={() => setActiveTab('education')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'education' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <BookOpen className="w-4 h-4 text-emerald-500" />
-              <span>Education</span>
+              <BookOpen className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Education ({profile?.education?.length || 0})</span>
             </button>
           </div>
 
@@ -151,7 +160,7 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
           {activeTab === 'skills' && (
             <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
               <div>
-                <h3 className="font-semibold text-foreground text-sm">Extracted & Verified Skills</h3>
+                <h3 className="font-semibold text-foreground text-sm">Extracted & Verified Skills ({skills.length})</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   These skills will be matched against target job descriptions. You can add missing skills or remove incorrect detections.
                 </p>
@@ -176,7 +185,7 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
               </form>
 
               {/* Skills Tags */}
-              <div className="flex flex-wrap gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-2 max-h-[360px] overflow-y-auto">
                 {skills.map((s) => (
                   <span
                     key={s.skill_name}
@@ -230,7 +239,22 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">LinkedIn</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    value={profile?.contact?.phone || ''}
+                    onChange={(e) =>
+                      setProfile({
+                        ...profile,
+                        contact: { ...profile.contact, phone: e.target.value }
+                      })
+                    }
+                    placeholder="+91-XXXXXXXXXX"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">LinkedIn Profile</label>
                   <input
                     type="text"
                     value={profile?.contact?.linkedin || ''}
@@ -240,11 +264,12 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                         contact: { ...profile.contact, linkedin: e.target.value }
                       })
                     }
+                    placeholder="https://linkedin.com/in/username"
                     className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">GitHub</label>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs text-muted-foreground mb-1">GitHub Profile</label>
                   <input
                     type="text"
                     value={profile?.contact?.github || ''}
@@ -254,6 +279,7 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                         contact: { ...profile.contact, github: e.target.value }
                       })
                     }
+                    placeholder="https://github.com/username"
                     className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground"
                   />
                 </div>
@@ -261,22 +287,55 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
             </div>
           )}
 
+          {/* Experience Tab Content */}
+          {activeTab === 'experience' && (
+            <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-foreground text-sm">Work Experience & Internships</h3>
+                <span className="text-xs text-muted-foreground">{profile?.experience?.length || 0} entries found</span>
+              </div>
+              {profile?.experience?.length > 0 ? (
+                profile.experience.map((exp, idx) => (
+                  <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                      <span className="font-bold text-sm text-foreground">{exp.company}</span>
+                      {exp.duration && (
+                        <span className="text-xs text-primary font-medium">{exp.duration}</span>
+                      )}
+                    </div>
+                    {exp.role && <p className="text-xs font-semibold text-muted-foreground">{exp.role}</p>}
+                    {exp.description && (
+                      <p className="text-xs text-muted-foreground leading-relaxed pt-1">{exp.description}</p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground">No experience automatically parsed. You can verify against the text on the right.</p>
+              )}
+            </div>
+          )}
+
           {/* Projects Tab Content */}
           {activeTab === 'projects' && (
             <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
-              <h3 className="font-semibold text-foreground text-sm">Extracted Projects</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-foreground text-sm">Extracted Projects</h3>
+                <span className="text-xs text-muted-foreground">{profile?.projects?.length || 0} projects found</span>
+              </div>
               {profile?.projects?.length > 0 ? (
                 profile.projects.map((proj, idx) => (
                   <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-2">
                     <span className="font-bold text-sm text-foreground">{proj.name}</span>
-                    <p className="text-xs text-muted-foreground">{proj.description}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {proj.technologies?.map((t) => (
-                        <span key={t} className="px-2 py-0.5 rounded text-[11px] bg-background border border-border text-foreground">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{proj.description}</p>
+                    {proj.technologies?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {proj.technologies.map((t) => (
+                          <span key={t} className="px-2 py-0.5 rounded text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))
               ) : (
@@ -288,12 +347,25 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
           {/* Education Tab Content */}
           {activeTab === 'education' && (
             <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
-              <h3 className="font-semibold text-foreground text-sm">Education Details</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-foreground text-sm">Education Details</h3>
+                <span className="text-xs text-muted-foreground">{profile?.education?.length || 0} degrees/institutions</span>
+              </div>
               {profile?.education?.length > 0 ? (
                 profile.education.map((edu, idx) => (
                   <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-1">
-                    <span className="font-bold text-sm text-foreground">{edu.degree}</span>
-                    <p className="text-xs text-muted-foreground">{edu.institution} • {edu.graduation_year}</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                      <span className="font-bold text-sm text-foreground">{edu.degree}</span>
+                      {edu.score && (
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                          {edu.score}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground font-medium">{edu.institution}</p>
+                    {edu.graduation_year && (
+                      <p className="text-[11px] text-muted-foreground italic">Graduation / Timeline: {edu.graduation_year}</p>
+                    )}
                   </div>
                 ))
               ) : (

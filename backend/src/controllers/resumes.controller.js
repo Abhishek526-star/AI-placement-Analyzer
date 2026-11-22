@@ -56,8 +56,8 @@ export async function uploadResume(req, res, next) {
       extractedText = parsed.text;
     }
 
-    // 5. Extract structured profile & detected skills
-    const { parsed_data, skills, extraction_confidence } = extractSectionsAndProfile(extractedText);
+    // 5. Extract structured profile & detected skills (pass rawBuffer for link annotation extraction)
+    const { parsed_data, skills, extraction_confidence } = extractSectionsAndProfile(extractedText, { rawBuffer: req.file.buffer });
 
     // 6. Section-aware chunking & embedding generation (Phase 5 RAG)
     const chunks = chunkResume(extractedText, { documentId: resumeId, userId });

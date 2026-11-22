@@ -48,16 +48,21 @@ export async function uploadResume(req, res, next) {
 
     // 4. Text extraction (PDF or DOCX)
     let extractedText = '';
+    let pdfLinks = [];
     if (fileType === 'pdf') {
       const parsed = await parsePdf(req.file.buffer);
       extractedText = parsed.text;
+      pdfLinks = parsed.links || [];
     } else {
       const parsed = await parseDocx(req.file.buffer);
       extractedText = parsed.text;
     }
 
-    // 5. Extract structured profile & detected skills (pass rawBuffer for link annotation extraction)
-    const { parsed_data, skills, extraction_confidence } = extractSectionsAndProfile(extractedText, { rawBuffer: req.file.buffer });
+    // 5. Extract structured profile & detected skills (pass rawBuffer and pdfLinks for link extraction)
+    const { parsed_data, skills, extraction_confidence } = extractSectionsAndProfile(extractedText, {
+      rawBuffer: req.file.buffer,
+      links: pdfLinks
+    });
 
     // 6. Section-aware chunking & embedding generation (Phase 5 RAG)
     const chunks = chunkResume(extractedText, { documentId: resumeId, userId });
@@ -194,7 +199,7 @@ export async function getResume(req, res, next) {
 
     const { data: resume, error: resumeErr } = await client
       .from('resumes')
-      .select('id, filename, file_type, storage_path, file_size_bytes, parsing_status, version, is_active, created_at, updated_at')
+      .select('id, filename, file_type, storage_path, file_size_bytes, parsing_status, version, is_active, extracted_text, created_at, updated_at')
       .eq('id', resumeId)
       .eq('user_id', userId)
       .single();

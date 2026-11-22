@@ -5,6 +5,7 @@ export async function parsePdf(buffer) {
   try {
     let text = '';
     let pageCount = 1;
+    let links = [];
 
     // pdf-parse v2+ exports PDFParse class
     if (pdfModule.PDFParse) {
@@ -13,6 +14,15 @@ export async function parsePdf(buffer) {
         const data = await parser.getText();
         text = (data.text || '').replace(/--\s*\d+\s+of\s+\d+\s*--/g, '').trim();
         pageCount = data.total || (data.pages ? data.pages.length : 1);
+
+        try {
+          const info = await parser.getInfo({ parsePageInfo: true });
+          if (info && Array.isArray(info.pages)) {
+            links = info.pages.flatMap((p) => p.links || []);
+          }
+        } catch {
+          // Gracefully continue if getInfo fails
+        }
       } finally {
         if (typeof parser.destroy === 'function') {
           await parser.destroy();
@@ -44,7 +54,8 @@ export async function parsePdf(buffer) {
 
     return {
       text,
-      pageCount
+      pageCount,
+      links
     };
   } catch (err) {
     if (err instanceof AppError) throw err;

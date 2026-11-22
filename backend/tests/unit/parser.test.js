@@ -64,6 +64,47 @@ Engineered a full-stack platform using React, Node.js, and PostgreSQL. Integrate
     expect(parsed_data.contact.linkedin).toBe('linkedin.com/in/aarav-sharma');
   });
 
+  it('cleanses candidate name with icons and delimiters cleanly', () => {
+    const headerResume = `Abhishek Kumar# abhishekkumar@example.com — ï LinkedIn — § GitHub
+EDUCATION
+Madan Mohan Malaviya University of Technology Gorakhpur, U.P.
+B.Tech in Computer Science and Engineering (CGPA: 8.33 / 10.0) Sep 2023 – May 2027
+EXPERIENCE
+Bharat Electronics Limited - CRL Ghaziabad June 2025 – July 2025
+Web Developer Intern Ghaziabad
+• Developed an interactive 3D metro station model using Three.js.
+• Implemented drag-and-drop functionality for dynamic station placement.
+PROJECTS
+Pharma Plus — React.js, Node.js, Express.js, MongoDB (GitHub · Demo) July 2026
+• Built a full-stack MERN pharmacy platform with medicine search and cart.
+• Implemented JWT authentication with bcrypt password hashing.
+Expense Manager — React.js, Node.js (GitHub · Demo) June 2026
+• Developed a full-stack expense management app with JWT.
+TECHNICAL SKILLS
+– Programming Languages: C, C++, JavaScript, Python, SQL`;
+
+    const { parsed_data } = extractSectionsAndProfile(headerResume);
+
+    expect(parsed_data.contact.full_name).toBe('Abhishek Kumar');
+    expect(parsed_data.education.length).toBe(1);
+    expect(parsed_data.education[0].institution).toContain('Madan Mohan Malaviya');
+    expect(parsed_data.education[0].degree).toContain('B.Tech in Computer Science');
+    expect(parsed_data.education[0].score).toBe('CGPA: 8.33 / 10.0');
+    expect(parsed_data.education[0].graduation_year).toBe('Sep 2023 – May 2027');
+
+    expect(parsed_data.experience.length).toBe(1);
+    expect(parsed_data.experience[0].company).toContain('Bharat Electronics Limited');
+    expect(parsed_data.experience[0].role).toContain('Web Developer Intern');
+    expect(parsed_data.experience[0].bullets.length).toBe(2);
+
+    expect(parsed_data.projects.length).toBe(2);
+    expect(parsed_data.projects[0].name).toBe('Pharma Plus');
+    expect(parsed_data.projects[0].duration).toBe('July 2026');
+    expect(parsed_data.projects[0].bullets.length).toBe(2);
+    expect(parsed_data.projects[1].name).toBe('Expense Manager');
+    expect(parsed_data.projects[1].duration).toBe('June 2026');
+  });
+
   it('detects technical skills with confidence and evidence', () => {
     const { skills, extraction_confidence } = extractSectionsAndProfile(sampleResume);
 

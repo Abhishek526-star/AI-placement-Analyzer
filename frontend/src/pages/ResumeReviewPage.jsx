@@ -292,23 +292,32 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
             <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground text-sm">Work Experience & Internships</h3>
-                <span className="text-xs text-muted-foreground">{profile?.experience?.length || 0} entries found</span>
+                <span className="text-xs text-muted-foreground">{profile?.experience?.length || 0} {profile?.experience?.length === 1 ? 'entry' : 'entries'} found</span>
               </div>
               {profile?.experience?.length > 0 ? (
-                profile.experience.map((exp, idx) => (
-                  <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-2">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                      <span className="font-bold text-sm text-foreground">{exp.company}</span>
-                      {exp.duration && (
-                        <span className="text-xs text-primary font-medium">{exp.duration}</span>
+                profile.experience.map((exp, idx) => {
+                  const bullets = Array.isArray(exp.bullets) && exp.bullets.length > 0
+                    ? exp.bullets
+                    : (exp.description ? exp.description.split('\n').filter(Boolean) : []);
+                  return (
+                    <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <span className="font-bold text-sm text-foreground">{exp.company}</span>
+                        {exp.duration && (
+                          <span className="text-xs text-primary font-medium">{exp.duration}</span>
+                        )}
+                      </div>
+                      {exp.role && <p className="text-xs font-semibold text-muted-foreground">{exp.role}</p>}
+                      {bullets.length > 0 && (
+                        <ul className="list-disc list-outside pl-4 space-y-1 pt-1 text-xs text-muted-foreground leading-relaxed">
+                          {bullets.map((b, bIdx) => (
+                            <li key={bIdx}>{b.replace(/^[•\-\*–]\s*/, '')}</li>
+                          ))}
+                        </ul>
                       )}
                     </div>
-                    {exp.role && <p className="text-xs font-semibold text-muted-foreground">{exp.role}</p>}
-                    {exp.description && (
-                      <p className="text-xs text-muted-foreground leading-relaxed pt-1">{exp.description}</p>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="text-xs text-muted-foreground">No experience automatically parsed. You can verify against the text on the right.</p>
               )}
@@ -320,24 +329,40 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
             <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground text-sm">Extracted Projects</h3>
-                <span className="text-xs text-muted-foreground">{profile?.projects?.length || 0} projects found</span>
+                <span className="text-xs text-muted-foreground">{profile?.projects?.length || 0} {profile?.projects?.length === 1 ? 'project' : 'projects'} found</span>
               </div>
               {profile?.projects?.length > 0 ? (
-                profile.projects.map((proj, idx) => (
-                  <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-2">
-                    <span className="font-bold text-sm text-foreground">{proj.name}</span>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{proj.description}</p>
-                    {proj.technologies?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {proj.technologies.map((t) => (
-                          <span key={t} className="px-2 py-0.5 rounded text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
-                            {t}
-                          </span>
-                        ))}
+                profile.projects.map((proj, idx) => {
+                  const bullets = Array.isArray(proj.bullets) && proj.bullets.length > 0
+                    ? proj.bullets
+                    : (proj.description ? proj.description.split('\n').filter(Boolean) : []);
+                  return (
+                    <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <span className="font-bold text-sm text-foreground">{proj.name}</span>
+                        {proj.duration && (
+                          <span className="text-xs text-primary font-medium">{proj.duration}</span>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))
+                      {proj.technologies?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {proj.technologies.map((t) => (
+                            <span key={t} className="px-2 py-0.5 rounded text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {bullets.length > 0 && (
+                        <ul className="list-disc list-outside pl-4 space-y-1 pt-1 text-xs text-muted-foreground leading-relaxed">
+                          {bullets.map((b, bIdx) => (
+                            <li key={bIdx}>{b.replace(/^[•\-\*–]\s*/, '')}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })
               ) : (
                 <p className="text-xs text-muted-foreground">No projects automatically parsed. You can verify against the text on the right.</p>
               )}
@@ -349,20 +374,22 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
             <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground text-sm">Education Details</h3>
-                <span className="text-xs text-muted-foreground">{profile?.education?.length || 0} degrees/institutions</span>
+                <span className="text-xs text-muted-foreground">{profile?.education?.length || 0} {profile?.education?.length === 1 ? 'degree/institution' : 'degrees/institutions'}</span>
               </div>
               {profile?.education?.length > 0 ? (
                 profile.education.map((edu, idx) => (
-                  <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-1">
+                  <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-1.5">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                      <span className="font-bold text-sm text-foreground">{edu.degree}</span>
+                      <span className="font-bold text-sm text-foreground">{edu.degree || 'Degree / Certificate'}</span>
                       {edu.score && (
-                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                           {edu.score}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground font-medium">{edu.institution}</p>
+                    {edu.institution && (
+                      <p className="text-xs text-foreground/80 font-medium">{edu.institution}</p>
+                    )}
                     {edu.graduation_year && (
                       <p className="text-[11px] text-muted-foreground italic">Graduation / Timeline: {edu.graduation_year}</p>
                     )}

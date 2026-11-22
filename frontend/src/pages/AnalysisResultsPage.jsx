@@ -3,7 +3,7 @@ import {
   CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronUp, Quote, Sparkles,
   BookOpen, HelpCircle, Lightbulb, MapPin, Loader2, ArrowRight, ShieldCheck,
   ListOrdered, Layers, Target, Compass, Printer, Download, FileText,
-  Mic, Play, Award, RefreshCw, Send, Check
+  Mic, Play, Award, RefreshCw, Send, Check, Zap, Edit3, Save, Copy, ArrowUpRight
 } from 'lucide-react';
 import { apiClient } from '../lib/api.js';
 import { useToast } from '../context/ToastContext.jsx';
@@ -26,6 +26,18 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
   const [candidateAnswers, setCandidateAnswers] = useState({});
   const [evaluations, setEvaluations] = useState({});
   const [evaluatingIdx, setEvaluatingIdx] = useState(null);
+
+  // Feature 2: Live Bullet Optimizer States
+  const [selectedProject, setSelectedProject] = useState('Pharma Plus');
+  const [originalBulletText, setOriginalBulletText] = useState(
+    'Built a full-stack MERN pharmacy platform with medicine search and cart.'
+  );
+  const [editableBulletText, setEditableBulletText] = useState(
+    'Architected a full-stack MERN pharmacy platform with 200+ SKU medicine catalog, implementing sub-80ms search queries, Redux Toolkit state caching, and Razorpay HMAC signature verification.'
+  );
+  const [simulationResult, setSimulationResult] = useState(null);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [isSavingBullet, setIsSavingBullet] = useState(false);
 
   const [roadmap, setRoadmap] = useState([]);
   const [loadingRoadmap, setLoadingRoadmap] = useState(false);
@@ -181,6 +193,61 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
     }
   };
 
+  // Feature 2: Simulate ATS Score Delta for Edited Bullet
+  const handleSimulateBullet = async (textToSimulate) => {
+    const text = textToSimulate !== undefined ? textToSimulate : editableBulletText;
+    if (!text || !text.trim()) {
+      toast.warning('Please enter bullet text to simulate ATS scoring.', 'Empty Bullet');
+      return;
+    }
+
+    setIsSimulating(true);
+    try {
+      const data = await apiClient(`/api/v1/career-intelligence/${analysis.id}/rescore-bullet`, {
+        method: 'POST',
+        body: JSON.stringify({
+          updatedBullet: text,
+          originalBullet: originalBulletText
+        })
+      });
+      setSimulationResult(data);
+      if (data.score_delta > 0) {
+        toast.success(
+          `ATS Match increased by +${data.score_delta}%! Simulated Score: ${data.simulated_match_score}%`,
+          'Score Recalculated'
+        );
+      } else {
+        toast.info(`Simulated ATS Score: ${data.simulated_match_score}%`, 'Simulation Updated');
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to simulate bullet re-scoring', 'Simulation Error');
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
+  // Feature 2: Save Optimized Bullet to Resume Profile
+  const handleSaveBullet = async () => {
+    if (!editableBulletText.trim()) return;
+    setIsSavingBullet(true);
+    try {
+      await apiClient(`/api/v1/career-intelligence/${analysis.id}/save-bullet`, {
+        method: 'POST',
+        body: JSON.stringify({
+          projectName: selectedProject,
+          originalBullet: originalBulletText,
+          updatedBullet: editableBulletText
+        })
+      });
+      setOriginalBulletText(editableBulletText);
+      toast.success('Optimized bullet saved to your resume profile!', 'Profile Updated');
+    } catch (err) {
+      toast.error(err.message || 'Failed to save bullet to profile', 'Save Error');
+    } finally {
+      setIsSavingBullet(false);
+    }
+  };
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === 'interview' && questions.length === 0 && !loadingQuestions) {
@@ -189,6 +256,8 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
       loadRoadmap();
     } else if (tab === 'suggestions' && suggestions.length === 0 && !loadingSuggestions) {
       loadSuggestions();
+    } else if (tab === 'rescore' && !simulationResult && !isSimulating) {
+      handleSimulateBullet(editableBulletText);
     }
   };
 
@@ -200,6 +269,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
   const tabs = [
     { id: 'overview', label: 'Match Overview', icon: Target },
     { id: 'skills', label: 'Skill Breakdown', icon: Layers, count: skillMatches.length },
+    { id: 'rescore', label: 'Live Bullet Optimizer', icon: Zap },
     { id: 'interview', label: 'Interview Prep', icon: HelpCircle, count: questions.length || undefined },
     { id: 'roadmap', label: 'Learning Roadmap', icon: Compass, count: roadmap.length || undefined },
     { id: 'suggestions', label: 'Resume Suggestions', icon: Lightbulb, count: suggestions.length || undefined }
@@ -499,7 +569,288 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
           </div>
         )}
 
-        {/* 3. INTERVIEW PREP TAB */}
+        {/* 3. LIVE BULLET OPTIMIZER & RE-SCORER TAB */}
+        {activeTab === 'rescore' && (
+          <div className="space-y-5">
+            {/* Header Description */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-border">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-primary" />
+                  <h3 className="font-bold text-foreground text-base">Live Resume Bullet Optimizer & ATS Re-Scorer</h3>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Optimize your project bullet points in real time to simulate exact score deltas and newly verified skills before updating your resume.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isSimulating}
+                  onClick={() => handleSimulateBullet()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-all shadow-sm"
+                >
+                  {isSimulating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  <span>Re-Calculate Score</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Project Quick-Switch Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {[
+                {
+                  name: 'Pharma Plus',
+                  original: 'Built a full-stack MERN pharmacy platform with medicine search and cart.',
+                  starter: 'Architected a full-stack MERN pharmacy platform with 200+ SKU medicine catalog, implementing sub-80ms search queries, Redux Toolkit state caching, and Razorpay HMAC signature verification.'
+                },
+                {
+                  name: 'Expense Manager',
+                  original: 'Developed a full-stack expense management app with JWT.',
+                  starter: 'Engineered 12+ RESTful micro-endpoints in Node.js/Express, leveraging MongoDB compound B-Tree indexes to accelerate monthly expense aggregations by 40%.'
+                },
+                {
+                  name: 'Bharat Electronics Limited (BEL)',
+                  original: 'Developed an interactive 3D metro station model using Three.js.',
+                  starter: 'Engineered an interactive 3D metro station spatial visualizer in Three.js, optimizing polygon mesh rendering and lighting to sustain a consistent 60 FPS across mobile and desktop devices.'
+                }
+              ].map((proj) => (
+                <button
+                  key={proj.name}
+                  type="button"
+                  onClick={() => {
+                    setSelectedProject(proj.name);
+                    setOriginalBulletText(proj.original);
+                    setEditableBulletText(proj.starter);
+                    handleSimulateBullet(proj.starter);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 border ${
+                    selectedProject === proj.name
+                      ? 'bg-primary text-white border-primary shadow-sm font-bold'
+                      : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  {proj.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Split-Pane: Editor on Left, Simulation Impact on Right */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              {/* Left Column: Interactive Bullet Editor */}
+              <div className="lg:col-span-7 space-y-4">
+                {/* Original Bullet Reference */}
+                <div className="p-3.5 rounded-xl bg-card border border-border space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+                    <span className="font-semibold text-foreground">Current Baseline Bullet on Resume:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditableBulletText(originalBulletText);
+                        handleSimulateBullet(originalBulletText);
+                      }}
+                      className="text-primary hover:underline flex items-center gap-1"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>Reset to Baseline</span>
+                    </button>
+                  </div>
+                  <p className="text-muted-foreground italic bg-background/80 p-2.5 rounded-lg border border-border text-xs leading-relaxed font-mono">
+                    "{originalBulletText}"
+                  </p>
+                </div>
+
+                {/* Editable Bullet Workspace */}
+                <div className="p-4 rounded-xl bg-card border border-border space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-foreground text-xs flex items-center gap-1.5">
+                      <Edit3 className="w-3.5 h-3.5 text-primary" />
+                      <span>Live Bullet Editor</span>
+                    </span>
+                    <span className="text-[11px] font-mono text-muted-foreground">
+                      {editableBulletText.split(/\s+/).filter(Boolean).length} words • {editableBulletText.length} chars
+                    </span>
+                  </div>
+
+                  <textarea
+                    rows={4}
+                    value={editableBulletText}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditableBulletText(val);
+                    }}
+                    placeholder="Type or refine your bullet..."
+                    className="w-full p-3 rounded-xl bg-background border border-border text-foreground text-xs leading-relaxed focus:outline-none focus:border-primary/60 font-mono transition-all resize-y"
+                  />
+
+                  {/* Quick-Insert Engineering Metric Chips */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                      Quick-Insert High-Impact Metrics & Skills:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        'sub-80ms search queries',
+                        '200+ SKU catalog',
+                        'reducing latency by 40%',
+                        '60 FPS stable rendering',
+                        'Docker containerization',
+                        'TypeScript strict types',
+                        'HMAC-SHA256 signature verification'
+                      ].map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => {
+                            const newText = editableBulletText.endsWith('.')
+                              ? `${editableBulletText.slice(0, -1)}, incorporating ${chip}.`
+                              : `${editableBulletText}, incorporating ${chip}.`;
+                            setEditableBulletText(newText);
+                            handleSimulateBullet(newText);
+                          }}
+                          className="px-2 py-0.5 rounded-md bg-muted hover:bg-primary/20 text-muted-foreground hover:text-primary text-[10px] font-mono border border-border transition-all"
+                        >
+                          + {chip}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                    <button
+                      type="button"
+                      disabled={isSimulating}
+                      onClick={() => handleSimulateBullet()}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      {isSimulating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                      <span>Simulate ATS Impact</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isSavingBullet}
+                      onClick={handleSaveBullet}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold transition-all shadow-sm"
+                    >
+                      {isSavingBullet ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" /> : <Save className="w-3.5 h-3.5 text-primary" />}
+                      <span>Save to Resume Profile</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Real-Time ATS Simulation & Quality Diagnosis */}
+              <div className="lg:col-span-5 space-y-4">
+                {/* Score Comparison Widget */}
+                <div className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-3 relative overflow-hidden">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block font-mono">
+                    Deterministic ATS Match Simulation (FR-08)
+                  </span>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="p-3 rounded-lg bg-background border border-border text-center space-y-0.5">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Baseline</span>
+                      <div className="text-xl font-bold font-mono text-muted-foreground">
+                        {matchScore}%
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-primary/30 text-center space-y-0.5 relative">
+                      <span className="text-[10px] text-primary uppercase font-bold">Simulated</span>
+                      <div className="text-xl font-extrabold font-mono text-foreground">
+                        {simulationResult ? simulationResult.simulated_match_score : matchScore}%
+                      </div>
+                      {simulationResult && simulationResult.score_delta > 0 && (
+                        <span className="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-sm font-mono animate-bounce">
+                          +{simulationResult.score_delta}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {simulationResult && simulationResult.score_delta > 0 ? (
+                    <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2 text-xs text-emerald-400">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>This phrasing unlocks <strong>+{simulationResult.score_delta}%</strong> in your ATS score!</span>
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-lg bg-muted border border-border text-xs text-muted-foreground">
+                      Phrasing matches current baseline. Add target JD skills or metrics to simulate an increase.
+                    </div>
+                  )}
+                </div>
+
+                {/* Newly Matched Skills Checklist */}
+                {simulationResult?.newly_matched_skills?.length > 0 && (
+                  <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 shadow-sm space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Newly Verified JD Requirements:</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {simulationResult.newly_matched_skills.map((s, sIdx) => (
+                        <div
+                          key={sIdx}
+                          className="p-2 rounded-lg bg-card border border-border flex items-center justify-between text-xs"
+                        >
+                          <span className="font-bold text-foreground">{s.skill_name}</span>
+                          <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+                            +{s.added_points} pts
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Executive SDE Bullet Quality Diagnosis */}
+                {simulationResult?.bullet_quality && (
+                  <div className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-3 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-foreground">Bullet Quality Diagnosis</span>
+                      <span
+                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                          simulationResult.bullet_quality.grade === 'executive_sde'
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                            : simulationResult.bullet_quality.grade === 'strong'
+                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                            : 'bg-muted border-border text-muted-foreground'
+                        }`}
+                      >
+                        {simulationResult.bullet_quality.grade.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2 rounded bg-background border border-border flex items-center gap-1.5">
+                        <span className={simulationResult.bullet_quality.has_action_verb ? 'text-emerald-400 font-bold' : 'text-muted-foreground'}>
+                          {simulationResult.bullet_quality.has_action_verb ? '✓' : '○'}
+                        </span>
+                        <span>Active Action Verb</span>
+                      </div>
+                      <div className="p-2 rounded bg-background border border-border flex items-center gap-1.5">
+                        <span className={simulationResult.bullet_quality.has_quantified_metric ? 'text-emerald-400 font-bold' : 'text-muted-foreground'}>
+                          {simulationResult.bullet_quality.has_quantified_metric ? '✓' : '○'}
+                        </span>
+                        <span>Quantified Metrics</span>
+                      </div>
+                    </div>
+
+                    {simulationResult.bullet_quality.feedback && (
+                      <p className="text-muted-foreground text-[11px] bg-background/80 p-2.5 rounded-lg border border-border leading-relaxed">
+                        {simulationResult.bullet_quality.feedback}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. INTERVIEW PREP TAB */}
         {activeTab === 'interview' && (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2">

@@ -3,7 +3,9 @@ import {
   getOrGenerateInterviewQuestions,
   getOrGenerateRoadmap,
   getOrGenerateResumeSuggestions,
-  evaluateInterviewAnswer
+  evaluateInterviewAnswer,
+  rescoreResumeBullet,
+  saveResumeBullet
 } from '../controllers/careerIntelligence.controller.js';
 import { careerIntelligenceLimiter } from '../middleware/rateLimiter.js';
 
@@ -14,5 +16,7 @@ router.post('/:id/interview-questions', careerIntelligenceLimiter, getOrGenerate
 router.post('/:id/roadmap', careerIntelligenceLimiter, getOrGenerateRoadmap);
 router.post('/:id/resume-suggestions', careerIntelligenceLimiter, getOrGenerateResumeSuggestions);
 router.post('/:id/evaluate-answer', careerIntelligenceLimiter, evaluateInterviewAnswer);
+router.post('/:id/rescore-bullet', careerIntelligenceLimiter, rescoreResumeBullet);
+router.post('/:id/save-bullet', careerIntelligenceLimiter, saveResumeBullet);
 
 export default router;

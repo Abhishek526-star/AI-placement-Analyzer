@@ -8,6 +8,7 @@ import {
   evaluateCandidateAnswer,
   evaluateWithHeuristics
 } from '../../src/services/ai/answerEvaluationEngine.js';
+import { simulateBulletRescore } from '../../src/services/ai/bulletRescorerEngine.js';
 
 describe('Career Intelligence & Honest Suggestions (PRD FR-10, FR-11, FR-12)', () => {
   const allowedCategories = [
@@ -198,6 +199,45 @@ This resulted in zero unauthorized access vulnerabilities and kept authenticatio
       expect(result.star_analysis.result.detected).toBe(true);
       expect(result.technical_depth.strengths.length).toBeGreaterThan(0);
       expect(result.coaching_tip).toBeDefined();
+    });
+  });
+
+  describe('Feature 2: Live Resume Bullet Re-Scorer Engine', () => {
+    it('detects newly matched skills and calculates positive score delta when bullet includes missing skills and metrics', () => {
+      const currentMatches = [
+        { skill_name: 'React', status: 'matched', weight: 10 },
+        { skill_name: 'TypeScript', status: 'missing', weight: 10 },
+        { skill_name: 'Docker', status: 'missing', weight: 10 }
+      ];
+
+      const simulation = simulateBulletRescore({
+        currentMatches,
+        originalBullet: 'Built a frontend with React.',
+        updatedBullet: 'Architected a frontend using React and TypeScript, containerizing deployment with Docker to achieve sub-80ms page loads.'
+      });
+
+      expect(simulation.current_match_score).toBeCloseTo(33.3, 0);
+      expect(simulation.simulated_match_score).toBe(100);
+      expect(simulation.score_delta).toBeGreaterThan(60);
+      expect(simulation.newly_matched_skills.length).toBe(2);
+      expect(simulation.detected_metrics).toContain('sub-80ms');
+      expect(simulation.bullet_quality.grade).toBe('executive_sde');
+    });
+
+    it('encourages active verbs and quantified metrics when phrasing is basic', () => {
+      const currentMatches = [
+        { skill_name: 'Node.js', status: 'matched', weight: 10 }
+      ];
+
+      const simulation = simulateBulletRescore({
+        currentMatches,
+        originalBullet: 'Worked on backend.',
+        updatedBullet: 'Worked on backend Node.js APIs.'
+      });
+
+      expect(simulation.bullet_quality.has_action_verb).toBe(false);
+      expect(simulation.bullet_quality.has_quantified_metric).toBe(false);
+      expect(simulation.bullet_quality.feedback).toContain('Architected');
     });
   });
 });

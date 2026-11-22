@@ -5,6 +5,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { getServiceClient } from '../config/supabase.js';
 import { generateResumeSuggestionsWithAI } from '../services/ai/resumeSuggestionsEngine.js';
 import { evaluateCandidateAnswer } from '../services/ai/answerEvaluationEngine.js';
+import { simulateBulletRescore } from '../services/ai/bulletRescorerEngine.js';
 
 export async function getOrGenerateInterviewQuestions(req, res, next) {
   try {
@@ -355,6 +356,127 @@ export async function evaluateInterviewAnswer(req, res, next) {
     });
 
     return sendSuccess(req, res, evaluation);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Feature 2: Live Resume Bullet Re-Scorer (Simulate ATS score impact)
+ */
+export async function rescoreResumeBullet(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const analysisId = req.params.id;
+    const { updatedBullet, originalBullet } = req.body || {};
+    const client = req.supabase || getServiceClient();
+
+    if (!updatedBullet || typeof updatedBullet !== 'string') {
+      return next(new AppError('Updated bullet text is required.', 400, 'INVALID_INPUT'));
+    }
+
+    // 1. Verify analysis exists and fetch current skill matches
+    const [analysisRes, matchesRes] = await Promise.all([
+      client.from('analyses').select('id, match_score').eq('id', analysisId).eq('user_id', userId).single(),
+      client.from('analysis_skill_matches').select('id, skill_name, status, weight, jd_importance, score_multiplier').eq('analysis_id', analysisId)
+    ]);
+
+    if (analysisRes.error || !analysisRes.data) {
+      return next(new AppError('Analysis not found.', 404, 'ANALYSIS_NOT_FOUND'));
+    }
+
+    const currentMatches = matchesRes.data || [];
+
+    const simulation = simulateBulletRescore({
+      currentMatches,
+      updatedBullet,
+      originalBullet
+    });
+
+    return sendSuccess(req, res, simulation);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Feature 2: Save Optimized Bullet to Resume Profile
+ */
+export async function saveResumeBullet(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const analysisId = req.params.id;
+    const { projectName, originalBullet, updatedBullet } = req.body || {};
+    const client = req.supabase || getServiceClient();
+
+    if (!updatedBullet || typeof updatedBullet !== 'string') {
+      return next(new AppError('Updated bullet text is required.', 400, 'INVALID_INPUT'));
+    }
+
+    // 1. Fetch analysis to get resume_id
+    const { data: analysis } = await client
+      .from('analyses')
+      .select('id, resume_id')
+      .eq('id', analysisId)
+      .eq('user_id', userId)
+      .single();
+
+    if (!analysis) {
+      return next(new AppError('Analysis not found.', 404, 'ANALYSIS_NOT_FOUND'));
+    }
+
+    // 2. Fetch current parsed resume data
+    const { data: profile } = await client
+      .from('resume_profiles')
+      .select('id, parsed_data')
+      .eq('resume_id', analysis.resume_id)
+      .single();
+
+    if (!profile) {
+      return next(new AppError('Resume profile not found.', 404, 'PROFILE_NOT_FOUND'));
+    }
+
+    const parsedData = { ...profile.parsed_data };
+    let replaced = false;
+
+    // Check in projects
+    if (Array.isArray(parsedData.projects)) {
+      for (const proj of parsedData.projects) {
+        if (!projectName || proj.name?.toLowerCase() === projectName?.toLowerCase()) {
+          if (Array.isArray(proj.bullets)) {
+            const idx = proj.bullets.findIndex((b) => b === originalBullet || b.includes(originalBullet.slice(0, 30)));
+            if (idx !== -1) {
+              proj.bullets[idx] = updatedBullet;
+              replaced = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Check in experience
+    if (!replaced && Array.isArray(parsedData.experience)) {
+      for (const exp of parsedData.experience) {
+        if (Array.isArray(exp.bullets)) {
+          const idx = exp.bullets.findIndex((b) => b === originalBullet || b.includes(originalBullet.slice(0, 30)));
+          if (idx !== -1) {
+            exp.bullets[idx] = updatedBullet;
+            replaced = true;
+            break;
+          }
+        }
+      }
+    }
+
+    if (replaced) {
+      await client
+        .from('resume_profiles')
+        .update({ parsed_data: parsedData })
+        .eq('id', profile.id);
+    }
+
+    return sendSuccess(req, res, { saved: true, replaced });
   } catch (err) {
     next(err);
   }

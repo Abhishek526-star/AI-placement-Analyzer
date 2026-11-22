@@ -3,6 +3,7 @@ import { Target, Sparkles, AlertCircle, ArrowRight, Clipboard, CheckCircle2, Loa
 import { apiClient } from '../lib/api.js';
 import { POPULAR_JOB_CATEGORIES } from '../constants/jobRoles.js';
 import { JobTitleSelect } from '../components/JobTitleSelect.jsx';
+import { ExperienceLevelSelect } from '../components/ExperienceLevelSelect.jsx';
 
 export function JobDescriptionInputPage({ onJdCreated, onBack }) {
   // Default to first popular role
@@ -163,20 +164,10 @@ export function JobDescriptionInputPage({ onJdCreated, onBack }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1">Experience Level</label>
-            <div className="relative">
-              <select
-                value={experienceLevel}
-                onChange={(e) => setExperienceLevel(e.target.value)}
-                className="w-full appearance-none pl-3 pr-8 py-2 text-sm rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-              >
-                <option value="Entry Level (0-2 years)" className="bg-card text-foreground py-1">Entry Level (0-2 yrs)</option>
-                <option value="Mid Level (2-5 years)" className="bg-card text-foreground py-1">Mid Level (2-5 yrs)</option>
-                <option value="Senior Level (5+ years)" className="bg-card text-foreground py-1">Senior Level (5+ yrs)</option>
-                <option value="Internship / Campus Placement" className="bg-card text-foreground py-1">Campus Placement</option>
-              </select>
-              <ChevronDown className="absolute right-2.5 top-2.5 w-4 h-4 text-muted-foreground pointer-events-none" />
-            </div>
+            <ExperienceLevelSelect
+              value={experienceLevel}
+              onChange={setExperienceLevel}
+            />
           </div>
         </div>
 

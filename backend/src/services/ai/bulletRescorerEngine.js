@@ -8,7 +8,8 @@ import { calculateMatchScore } from '../skills/scorer.js';
 export function simulateBulletRescore({
   currentMatches = [],
   updatedBullet = '',
-  originalBullet = ''
+  originalBullet = '',
+  baselineScore = 0
 }) {
   const bulletTrimmed = (updatedBullet || '').trim();
   const lowerBullet = bulletTrimmed.toLowerCase();
@@ -73,8 +74,11 @@ export function simulateBulletRescore({
   const currentScoreResult = calculateMatchScore(currentMatches);
   const simulatedScoreResult = calculateMatchScore(simulatedMatches);
 
+  const baseline = currentScoreResult.match_score > 0 ? currentScoreResult.match_score : (Number(baselineScore) || 0);
+  const simulated = simulatedScoreResult.match_score > 0 ? simulatedScoreResult.match_score : baseline;
+
   const newlyMatchedSkills = simulatedMatches.filter((m) => m.simulated_upgrade);
-  const scoreDelta = Math.round((simulatedScoreResult.match_score - currentScoreResult.match_score) * 10) / 10;
+  const scoreDelta = Math.max(0, Math.round((simulated - baseline) * 10) / 10);
 
   // 5. Senior Engineering Bullet Assessment
   const wordCount = bulletTrimmed.split(/\s+/).filter(Boolean).length;
@@ -89,10 +93,10 @@ export function simulateBulletRescore({
   }
 
   return {
-    current_match_score: currentScoreResult.match_score,
-    simulated_match_score: simulatedScoreResult.match_score,
+    current_match_score: baseline,
+    simulated_match_score: simulated,
     score_delta: scoreDelta,
-    alignment_level: simulatedScoreResult.alignment_level,
+    alignment_level: simulated >= 80 ? 'strong' : simulated >= 60 ? 'moderate' : 'low',
     detected_metrics: detectedMetrics,
     newly_matched_skills: newlyMatchedSkills.map((s) => ({
       skill_name: s.skill_name,

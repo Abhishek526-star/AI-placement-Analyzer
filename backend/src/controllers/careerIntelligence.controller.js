@@ -378,19 +378,23 @@ export async function rescoreResumeBullet(req, res, next) {
     // 1. Verify analysis exists and fetch current skill matches
     const [analysisRes, matchesRes] = await Promise.all([
       client.from('analyses').select('id, match_score').eq('id', analysisId).eq('user_id', userId).single(),
-      client.from('analysis_skill_matches').select('id, skill_name, status, weight, jd_importance, score_multiplier').eq('analysis_id', analysisId)
+      client.from('analysis_skill_matches').select('id, skill_name, status, weight, jd_importance, score').eq('analysis_id', analysisId)
     ]);
 
     if (analysisRes.error || !analysisRes.data) {
       return next(new AppError('Analysis not found.', 404, 'ANALYSIS_NOT_FOUND'));
     }
 
-    const currentMatches = matchesRes.data || [];
+    const baselineScore = Number(analysisRes.data?.match_score) || Number(req.body?.baselineScore) || 0;
+    const currentMatches = (matchesRes.data && matchesRes.data.length > 0)
+      ? matchesRes.data
+      : (Array.isArray(req.body?.currentMatches) ? req.body.currentMatches : []);
 
     const simulation = simulateBulletRescore({
       currentMatches,
       updatedBullet,
-      originalBullet
+      originalBullet,
+      baselineScore
     });
 
     return sendSuccess(req, res, simulation);

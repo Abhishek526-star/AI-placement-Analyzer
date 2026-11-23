@@ -239,5 +239,19 @@ This resulted in zero unauthorized access vulnerabilities and kept authenticatio
       expect(simulation.bullet_quality.has_quantified_metric).toBe(false);
       expect(simulation.bullet_quality.feedback).toContain('Architected');
     });
+
+    it('uses baselineScore fallback and never returns 0 when baselineScore is provided', () => {
+      const simulation = simulateBulletRescore({
+        currentMatches: [],
+        baselineScore: 85,
+        originalBullet: 'Built a frontend.',
+        updatedBullet: 'Architected an interactive 3D spatial visualizer in Three.js, optimizing mesh rendering to sustain a stable 60 FPS across devices.'
+      });
+
+      expect(simulation.current_match_score).toBe(85);
+      expect(simulation.simulated_match_score).toBe(85);
+      expect(simulation.score_delta).toBe(0);
+      expect(simulation.bullet_quality.grade).toBe('executive_sde');
+    });
   });
 });

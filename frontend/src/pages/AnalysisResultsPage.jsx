@@ -207,7 +207,9 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
         method: 'POST',
         body: JSON.stringify({
           updatedBullet: text,
-          originalBullet: originalBulletText
+          originalBullet: originalBulletText,
+          baselineScore: matchScore,
+          currentMatches: skillMatches
         })
       });
       setSimulationResult(data);

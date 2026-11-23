@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../lib/api.js';
-import { CheckCircle2, ShieldCheck, Plus, X, ArrowRight, Save, User, BookOpen, Briefcase, Code, Sparkles, Loader2 } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, Plus, X, ArrowRight, Save, User, BookOpen, Briefcase, Code, Sparkles, Loader2, FileText } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
+import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
+import { SkeletonProfileReview } from '../components/ui/Skeletons.jsx';
 
 export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
   const { toast } = useToast();
+  const { skeletonSimulator } = useTheme();
   const [resume, setResume] = useState(null);
   const [profile, setProfile] = useState(null);
   const [skills, setSkills] = useState([]);
@@ -63,107 +67,87 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-16 flex flex-col items-center justify-center text-muted-foreground gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="text-sm">Loading extracted resume details...</span>
-      </div>
-    );
+  if (loading || skeletonSimulator) {
+    return <SkeletonProfileReview />;
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">Review Extracted Profile</h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
-              Confidence: {Math.round((resume?.profile?.extraction_confidence || 0.85) * 100)}%
+    <div className="space-y-6">
+      {/* Top Header Bento Card */}
+      <div className="bento-card p-6 sm:p-7 rounded-3xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Review Extracted Profile
+            </h1>
+            <span className="px-3 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-mono-numbers font-bold border border-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+              ● Extraction Confidence: {Math.round((resume?.profile?.extraction_confidence || 0.85) * 100)}%
             </span>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            File: <span className="font-semibold text-foreground">{resume?.filename}</span> (Version {resume?.version})
+          <p className="text-xs text-muted-foreground">
+            File: <span className="font-mono text-foreground font-semibold">{resume?.filename}</span> (Version {resume?.version}) • Verify your extracted experience before matching.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
-          >
-            Back
-          </button>
-          <button
+        <div className="flex items-center gap-3 shrink-0">
+          {onBack && (
+            <ColorfulButton variant="glass" size="md" onClick={onBack}>
+              Back
+            </ColorfulButton>
+          )}
+
+          <ColorfulButton
+            variant="emerald"
+            size="md"
+            icon={CheckCircle2}
+            loading={saving}
+            loadingText="Saving..."
             onClick={handleSaveAndConfirm}
-            disabled={saving}
-            className="flex items-center gap-2 px-6 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-hover shadow-sm disabled:opacity-50 transition-all"
           >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-            <span>Confirm & Continue to JD</span>
-          </button>
+            Confirm & Continue to JD
+          </ColorfulButton>
         </div>
       </div>
 
-      {/* Split-Pane Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Split-Pane Bento Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Pane (7 cols): Editable Form */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Sub Navigation Tabs */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/60 border border-border">
-            <button
-              onClick={() => setActiveTab('skills')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'skills' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Code className="w-3.5 h-3.5 text-primary" />
-              <span>Skills ({skills.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('contact')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'contact' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <User className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Contact</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('experience')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'experience' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Briefcase className="w-3.5 h-3.5 text-sky-500" />
-              <span>Experience ({profile?.experience?.length || 0})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('projects')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'projects' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Briefcase className="w-3.5 h-3.5 text-amber-500" />
-              <span>Projects ({profile?.projects?.length || 0})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('education')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'education' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Education ({profile?.education?.length || 0})</span>
-            </button>
+        <div className="lg:col-span-7 space-y-4">
+          {/* Bento Sub Navigation Pill Tabs */}
+          <div className="bento-card p-1.5 rounded-2xl flex items-center gap-1.5 overflow-x-auto">
+            {[
+              { id: 'skills', label: `Skills (${skills.length})`, icon: Code },
+              { id: 'contact', label: 'Contact', icon: User },
+              { id: 'experience', label: `Experience (${profile?.experience?.length || 0})`, icon: Briefcase },
+              { id: 'projects', label: `Projects (${profile?.projects?.length || 0})`, icon: Briefcase },
+              { id: 'education', label: `Education (${profile?.education?.length || 0})`, icon: BookOpen }
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 min-w-[110px] py-2 px-3 text-xs font-display font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 select-none ${
+                    isActive
+                      ? 'bg-primary/20 text-foreground border border-primary/40 shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Skills Tab Content */}
           {activeTab === 'skills' && (
-            <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
+            <div className="bento-card p-6 sm:p-7 rounded-3xl space-y-4">
               <div>
-                <h3 className="font-semibold text-foreground text-sm">Extracted & Verified Skills ({skills.length})</h3>
+                <h3 className="font-display font-bold text-foreground text-sm">
+                  Extracted & Verified Skills ({skills.length})
+                </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   These skills will be matched against target job descriptions. You can add missing skills or remove incorrect detections.
                 </p>
@@ -176,29 +160,25 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                   value={newSkill}
                   onChange={(e) => setNewSkill(e.target.value)}
                   placeholder="Add skill (e.g., PostgreSQL, Docker, Next.js)..."
-                  className="flex-1 px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="flex-1 px-3.5 py-2 text-xs font-mono-numbers rounded-xl border border-border bg-background/80 text-foreground focus:outline-none focus:border-primary/60"
                 />
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-hover"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add</span>
-                </button>
+                <ColorfulButton type="submit" variant="cobalt" size="sm" icon={Plus}>
+                  Add
+                </ColorfulButton>
               </form>
 
               {/* Skills Tags */}
-              <div className="flex flex-wrap gap-2 pt-2 max-h-[360px] overflow-y-auto">
+              <div className="flex flex-wrap gap-2 pt-2 max-h-[380px] overflow-y-auto">
                 {skills.map((s) => (
                   <span
                     key={s.skill_name}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                    className="btn-tactile inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-bold bg-primary/10 text-primary border border-primary/25"
                   >
                     <span>{s.skill_name}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveSkill(s.skill_name)}
-                      className="p-0.5 hover:bg-primary/20 rounded-full"
+                      className="p-0.5 hover:bg-primary/20 rounded-full transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -210,11 +190,11 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
 
           {/* Contact Tab Content */}
           {activeTab === 'contact' && (
-            <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4 text-sm">
-              <h3 className="font-semibold text-foreground text-sm">Contact Information</h3>
+            <div className="bento-card p-6 sm:p-7 rounded-3xl space-y-4 text-sm">
+              <h3 className="font-display font-bold text-foreground text-sm">Contact Information</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Full Name</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Full Name</label>
                   <input
                     type="text"
                     value={profile?.contact?.full_name || ''}
@@ -224,11 +204,11 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                         contact: { ...profile.contact, full_name: e.target.value }
                       })
                     }
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-border bg-background/80 text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Email</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Email</label>
                   <input
                     type="email"
                     value={profile?.contact?.email || ''}
@@ -238,11 +218,11 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                         contact: { ...profile.contact, email: e.target.value }
                       })
                     }
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-border bg-background/80 text-foreground font-mono-numbers"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Phone Number</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Phone Number</label>
                   <input
                     type="text"
                     value={profile?.contact?.phone || ''}
@@ -253,11 +233,11 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                       })
                     }
                     placeholder="+91-XXXXXXXXXX"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-border bg-background/80 text-foreground font-mono-numbers"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-muted-foreground mb-1">LinkedIn Profile</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">LinkedIn Profile</label>
                   <input
                     type="text"
                     value={profile?.contact?.linkedin || ''}
@@ -268,11 +248,11 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                       })
                     }
                     placeholder="https://linkedin.com/in/username"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-border bg-background/80 text-foreground font-mono-numbers"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs text-muted-foreground mb-1">GitHub Profile</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">GitHub Profile</label>
                   <input
                     type="text"
                     value={profile?.contact?.github || ''}
@@ -283,7 +263,7 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                       })
                     }
                     placeholder="https://github.com/username"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-background text-foreground"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-border bg-background/80 text-foreground font-mono-numbers"
                   />
                 </div>
               </div>
@@ -292,10 +272,12 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
 
           {/* Experience Tab Content */}
           {activeTab === 'experience' && (
-            <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
+            <div className="bento-card p-6 sm:p-7 rounded-3xl space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-foreground text-sm">Work Experience & Internships</h3>
-                <span className="text-xs text-muted-foreground">{profile?.experience?.length || 0} {profile?.experience?.length === 1 ? 'entry' : 'entries'} found</span>
+                <h3 className="font-display font-bold text-foreground text-sm">Work Experience & Internships</h3>
+                <span className="text-xs font-mono-numbers text-muted-foreground">
+                  {profile?.experience?.length || 0} {profile?.experience?.length === 1 ? 'entry' : 'entries'} found
+                </span>
               </div>
               {profile?.experience?.length > 0 ? (
                 profile.experience.map((exp, idx) => {
@@ -303,11 +285,11 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                     ? exp.bullets
                     : (exp.description ? exp.description.split('\n').filter(Boolean) : []);
                   return (
-                    <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-2.5">
+                    <div key={idx} className="p-4 rounded-2xl bg-card/60 border border-border/50 space-y-2">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                        <span className="font-bold text-sm text-foreground">{exp.company}</span>
+                        <span className="font-display font-bold text-sm text-foreground">{exp.company}</span>
                         {exp.duration && (
-                          <span className="text-xs text-primary font-medium">{exp.duration}</span>
+                          <span className="text-xs text-primary font-mono-numbers font-semibold">{exp.duration}</span>
                         )}
                       </div>
                       {exp.role && <p className="text-xs font-semibold text-muted-foreground">{exp.role}</p>}
@@ -329,10 +311,12 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
 
           {/* Projects Tab Content */}
           {activeTab === 'projects' && (
-            <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
+            <div className="bento-card p-6 sm:p-7 rounded-3xl space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-foreground text-sm">Extracted Projects</h3>
-                <span className="text-xs text-muted-foreground">{profile?.projects?.length || 0} {profile?.projects?.length === 1 ? 'project' : 'projects'} found</span>
+                <h3 className="font-display font-bold text-foreground text-sm">Extracted Projects</h3>
+                <span className="text-xs font-mono-numbers text-muted-foreground">
+                  {profile?.projects?.length || 0} {profile?.projects?.length === 1 ? 'project' : 'projects'} found
+                </span>
               </div>
               {profile?.projects?.length > 0 ? (
                 profile.projects.map((proj, idx) => {
@@ -340,17 +324,17 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                     ? proj.bullets
                     : (proj.description ? proj.description.split('\n').filter(Boolean) : []);
                   return (
-                    <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-2.5">
+                    <div key={idx} className="p-4 rounded-2xl bg-card/60 border border-border/50 space-y-2">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                        <span className="font-bold text-sm text-foreground">{proj.name}</span>
+                        <span className="font-display font-bold text-sm text-foreground">{proj.name}</span>
                         {proj.duration && (
-                          <span className="text-xs text-primary font-medium">{proj.duration}</span>
+                          <span className="text-xs text-primary font-mono-numbers font-semibold">{proj.duration}</span>
                         )}
                       </div>
                       {proj.technologies?.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-0.5">
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
                           {proj.technologies.map((t) => (
-                            <span key={t} className="px-2 py-0.5 rounded text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
+                            <span key={t} className="px-2 py-0.5 rounded-full text-[10px] font-mono-numbers font-bold bg-primary/10 text-primary border border-primary/20">
                               {t}
                             </span>
                           ))}
@@ -374,18 +358,20 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
 
           {/* Education Tab Content */}
           {activeTab === 'education' && (
-            <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
+            <div className="bento-card p-6 sm:p-7 rounded-3xl space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-foreground text-sm">Education Details</h3>
-                <span className="text-xs text-muted-foreground">{profile?.education?.length || 0} {profile?.education?.length === 1 ? 'degree/institution' : 'degrees/institutions'}</span>
+                <h3 className="font-display font-bold text-foreground text-sm">Education Details</h3>
+                <span className="text-xs font-mono-numbers text-muted-foreground">
+                  {profile?.education?.length || 0} degrees/institutions
+                </span>
               </div>
               {profile?.education?.length > 0 ? (
                 profile.education.map((edu, idx) => (
-                  <div key={idx} className="p-4 rounded-lg bg-muted/40 border border-border space-y-1.5">
+                  <div key={idx} className="p-4 rounded-2xl bg-card/60 border border-border/50 space-y-1.5">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                      <span className="font-bold text-sm text-foreground">{edu.degree || 'Degree / Certificate'}</span>
+                      <span className="font-display font-bold text-sm text-foreground">{edu.degree || 'Degree / Certificate'}</span>
                       {edu.score && (
-                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                        <span className="text-xs font-mono-numbers font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                           {edu.score}
                         </span>
                       )}
@@ -394,7 +380,7 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
                       <p className="text-xs text-foreground/80 font-medium">{edu.institution}</p>
                     )}
                     {edu.graduation_year && (
-                      <p className="text-[11px] text-muted-foreground italic">Graduation / Timeline: {edu.graduation_year}</p>
+                      <p className="text-[11px] text-muted-foreground font-mono-numbers italic">Timeline: {edu.graduation_year}</p>
                     )}
                   </div>
                 ))
@@ -405,13 +391,18 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
           )}
         </div>
 
-        {/* Right Pane (5 cols): Preview or Extracted Text */}
-        <div className="lg:col-span-5 p-6 rounded-xl border border-border bg-card shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-foreground text-sm">Resume Reference Viewer</h3>
-            <span className="text-xs text-muted-foreground">Verbatim Raw Text</span>
+        {/* Right Pane (5 cols): Verbatim Reference Viewer */}
+        <div className="lg:col-span-5 bento-card p-6 sm:p-7 rounded-3xl space-y-3">
+          <div className="flex items-center justify-between border-b border-border/40 pb-3">
+            <h3 className="font-display font-bold text-foreground text-sm flex items-center gap-1.5">
+              <FileText className="w-4 h-4 text-primary" />
+              <span>Resume Reference Viewer</span>
+            </h3>
+            <span className="text-[10px] font-mono-numbers px-2 py-0.5 rounded-full bg-muted text-muted-foreground uppercase font-bold">
+              Verbatim Chunks
+            </span>
           </div>
-          <div className="h-[500px] overflow-y-auto p-4 rounded-lg bg-muted/40 border border-border text-xs text-muted-foreground font-mono leading-relaxed whitespace-pre-wrap">
+          <div className="h-[520px] overflow-y-auto p-4 rounded-2xl bg-card/60 border border-border/50 text-xs text-muted-foreground font-mono-numbers leading-relaxed whitespace-pre-wrap">
             {resume?.extracted_text || 'No extracted text available.'}
           </div>
         </div>

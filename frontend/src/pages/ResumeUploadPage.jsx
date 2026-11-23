@@ -1,15 +1,24 @@
 import React, { useState } from 'react';
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, ArrowRight, Loader2, Sparkles, Shield } from 'lucide-react';
+import { UploadCloud, FileText, CheckCircle2, AlertCircle, ArrowRight, Loader2, Sparkles, Shield, RefreshCw } from 'lucide-react';
 import { apiClient } from '../lib/api.js';
+import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
+import { SkeletonPipeline } from '../components/ui/Skeletons.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 
 export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
+  const { skeletonSimulator } = useTheme();
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0); // 0: idle, 1: uploading, 2: parsing, 3: structuring, 4: complete
   const [error, setError] = useState(null);
 
-  const steps = ['Uploading file', 'Validating magic bytes', 'Extracting resume text', 'Structuring profile & skills'];
+  const steps = [
+    { name: 'Uploading file', desc: 'Secure transfer to storage' },
+    { name: 'Validating magic bytes', desc: 'Sanitizing PDF/DOCX headers' },
+    { name: 'Extracting resume text', desc: 'Tokenizing chunks & projects' },
+    { name: 'Structuring profile & skills', desc: 'Canonical taxonomy mapping' }
+  ];
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -58,13 +67,12 @@ export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
     formData.append('file', file);
 
     try {
-      // Simulate progress steps for smooth UX
       setTimeout(() => setCurrentStep(2), 500);
       setTimeout(() => setCurrentStep(3), 1200);
 
       const data = await apiClient('/resumes', {
         method: 'POST',
-        headers: {}, // FormData sets multipart boundaries automatically
+        headers: {},
         body: formData
       });
 
@@ -80,33 +88,43 @@ export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Upload Your Resume</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Upload your latest resume in PDF or DOCX format. We will extract your projects and skills so you can verify them before running job matches.
-        </p>
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header Banner */}
+      <div className="bento-card p-6 sm:p-7 rounded-3xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Upload Your Resume
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono-numbers font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+              Deterministic Parsing
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Upload your latest resume in PDF or DOCX format. We extract projects, verifiable experience, and skills into your candidate profile.
+          </p>
+        </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-sm flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-400" />
           <div className="space-y-1">
-            <span className="font-semibold block">Upload Failed</span>
-            <p>{error}</p>
+            <span className="font-display font-bold block text-sm">Upload Failed</span>
+            <p className="leading-relaxed">{error}</p>
           </div>
         </div>
       )}
 
-      {/* Drag & Drop Zone */}
+      {/* Drag & Drop Zone Bento Card */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all ${
+        className={`bento-card relative rounded-3xl p-8 sm:p-14 text-center transition-all overflow-hidden ${
           isDragging
-            ? 'border-primary bg-primary/5'
-            : 'border-border bg-card hover:border-primary/50 hover:bg-muted/30'
+            ? 'border-primary ring-2 ring-primary/40 bg-primary/10'
+            : 'hover:border-primary/50'
         }`}
       >
         <input
@@ -114,57 +132,96 @@ export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
           accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={handleFileInput}
           disabled={uploading}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
         />
 
         <div className="flex flex-col items-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-            <UploadCloud className="w-8 h-8" />
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 border border-primary/30 text-primary flex items-center justify-center mb-5 shadow-lg shadow-purple-500/10">
+            <UploadCloud className="w-10 h-10 animate-bounce" />
           </div>
 
-          <h3 className="text-lg font-bold text-foreground">
+          <h3 className="font-display text-lg sm:text-xl font-bold text-foreground">
             {file ? file.name : 'Choose a file or drag & drop here'}
           </h3>
-          <p className="text-xs text-muted-foreground mt-1 mb-4">
-            PDF or DOCX files up to 10 MB
+          <p className="text-xs text-muted-foreground mt-1 mb-5">
+            Strict magic-byte validated PDF or DOCX files up to 10 MB
           </p>
 
           {file ? (
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/10 text-emerald-400 text-xs font-mono-numbers font-bold border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Ready for validation ({(file.size / 1024).toFixed(1)} KB)</span>
+              <span>Ready for parsing ({(file.size / 1024).toFixed(1)} KB)</span>
             </div>
           ) : (
-            <span className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold shadow-sm">
-              Browse File
-            </span>
+            <ColorfulButton variant="cobalt" size="md" icon={UploadCloud}>
+              Browse Resume File
+            </ColorfulButton>
           )}
         </div>
       </div>
 
-      {/* Step Tracker during upload */}
-      {uploading && (
-        <div className="p-5 rounded-xl border border-border bg-card shadow-sm space-y-3">
-          <div className="flex items-center justify-between text-sm font-semibold text-foreground">
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-primary" />
-              <span>Processing Resume...</span>
+      {/* Multi-Stage Animated Pipeline Loader */}
+      {(uploading || skeletonSimulator) && (
+        <div className="bento-card p-6 sm:p-7 rounded-3xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+              </span>
+              <span className="font-display font-bold text-foreground text-sm">
+                Multi-Stage Parsing & Extraction Pipeline
+              </span>
+            </div>
+            <span className="text-xs font-mono-numbers font-bold text-primary px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+              {uploading ? Math.min(100, currentStep * 25) : 75}% Complete
             </span>
-            <span className="text-xs text-primary font-mono">{Math.min(100, currentStep * 25)}%</span>
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          {/* Animated Progress Ribbon */}
+          <div className="w-full h-2 rounded-full bg-card/80 border border-border/50 overflow-hidden relative">
+            <div
+              className="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 transition-all duration-500 rounded-full animate-ribbon-progress"
+              style={{ width: `${uploading ? Math.min(100, currentStep * 25) : 75}%` }}
+            ></div>
+          </div>
+
+          {/* 4 Sequential Pipeline Steps */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
             {steps.map((st, idx) => {
-              const done = currentStep > idx;
-              const active = currentStep === idx + 1;
+              const stepNumber = idx + 1;
+              const isDone = uploading ? currentStep > idx : idx < 3;
+              const isActive = uploading ? currentStep === stepNumber : idx === 2;
+
               return (
-                <div key={st} className="space-y-1">
-                  <div
-                    className={`h-1.5 rounded-full transition-colors ${
-                      done ? 'bg-primary' : active ? 'bg-primary/50 animate-pulse' : 'bg-muted'
-                    }`}
-                  />
-                  <p className="text-[10px] text-muted-foreground truncate">{st}</p>
+                <div
+                  key={st.name}
+                  className={`p-3.5 rounded-2xl border transition-all ${
+                    isDone
+                      ? 'bg-emerald-500/10 border-emerald-500/30'
+                      : isActive
+                      ? 'bg-primary/15 border-primary shadow-[0_0_12px_rgba(139,92,246,0.25)]'
+                      : 'bg-card/40 border-border/40 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-mono-numbers text-[10px] uppercase font-bold text-muted-foreground">
+                      Step {stepNumber}/4
+                    </span>
+                    {isDone ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    ) : isActive ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    ) : (
+                      <span className="w-2 h-2 rounded-full bg-muted"></span>
+                    )}
+                  </div>
+                  <h4 className="font-display font-bold text-xs text-foreground truncate">
+                    {st.name}
+                  </h4>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                    {st.desc}
+                  </p>
                 </div>
               );
             })}
@@ -172,31 +229,36 @@ export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
         </div>
       )}
 
-      {/* Bottom Actions */}
-      <div className="flex items-center justify-between pt-4 border-t border-border">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Shield className="w-4 h-4 text-emerald-500" />
-          <span>Files are stored privately in Supabase Storage and can be deleted anytime.</span>
+      {/* Bottom Actions Bar */}
+      <div className="bento-card p-5 rounded-3xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+          <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>Files are stored privately in encrypted storage and can be deleted anytime.</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           {onCancel && (
-            <button
-              onClick={onCancel}
+            <ColorfulButton
+              variant="glass"
+              size="md"
               disabled={uploading}
-              className="px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted"
+              onClick={onCancel}
             >
               Cancel
-            </button>
+            </ColorfulButton>
           )}
-          <button
-            onClick={handleUpload}
+
+          <ColorfulButton
+            variant="prism"
+            size="lg"
+            icon={ArrowRight}
+            loading={uploading}
+            loadingText="Processing..."
             disabled={!file || uploading}
-            className="flex items-center gap-2 px-6 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-hover shadow-sm disabled:opacity-50 transition-all"
+            onClick={handleUpload}
           >
-            <span>Confirm & Upload</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+            Confirm & Upload
+          </ColorfulButton>
         </div>
       </div>
     </div>

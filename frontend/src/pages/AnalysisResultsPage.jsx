@@ -168,7 +168,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
 
     setEvaluatingIdx(idx);
     try {
-      const data = await apiClient(`/api/v1/career-intelligence/${analysis.id}/evaluate-answer`, {
+      const data = await apiClient(`/analyses/${analysis.id}/evaluate-answer`, {
         method: 'POST',
         body: JSON.stringify({
           question: q.question,
@@ -203,7 +203,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
 
     setIsSimulating(true);
     try {
-      const data = await apiClient(`/api/v1/career-intelligence/${analysis.id}/rescore-bullet`, {
+      const data = await apiClient(`/analyses/${analysis.id}/rescore-bullet`, {
         method: 'POST',
         body: JSON.stringify({
           updatedBullet: text,
@@ -231,7 +231,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
     if (!editableBulletText.trim()) return;
     setIsSavingBullet(true);
     try {
-      await apiClient(`/api/v1/career-intelligence/${analysis.id}/save-bullet`, {
+      await apiClient(`/analyses/${analysis.id}/save-bullet`, {
         method: 'POST',
         body: JSON.stringify({
           projectName: selectedProject,

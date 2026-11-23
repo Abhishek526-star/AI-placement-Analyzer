@@ -23,7 +23,10 @@ export async function apiClient(endpoint, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  // Defensive strip of redundant /api/v1 prefix if passed in endpoint
+  const cleanEndpoint = endpoint.startsWith('/api/v1') ? endpoint.slice(7) : endpoint;
+
+  const response = await fetch(`${API_BASE_URL}${cleanEndpoint}`, {
     ...options,
     headers,
   });

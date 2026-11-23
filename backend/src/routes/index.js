@@ -21,6 +21,7 @@ router.use('/resumes', authMiddleware, resumesRoutes);
 router.use('/jobs', authMiddleware, jobsRoutes);
 router.use('/analyses', authMiddleware, analysesRoutes);
 router.use('/analyses', authMiddleware, careerIntelligenceRoutes);
+router.use('/career-intelligence', authMiddleware, careerIntelligenceRoutes);
 router.use('/dashboard', authMiddleware, dashboardRoutes);
 
 export default router;

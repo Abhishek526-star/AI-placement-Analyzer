@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { ToastProvider, useToast } from './context/ToastContext.jsx';
-import { Navbar } from './components/layout/Navbar.jsx';
-import { Sidebar } from './components/layout/Sidebar.jsx';
+import { CommandDock } from './components/layout/CommandDock.jsx';
 import { LandingPage } from './pages/LandingPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
 import { AuthModal } from './pages/AuthModal.jsx';
@@ -92,8 +91,13 @@ function MainLayout() {
   // Unauthenticated visitors see the Landing Page
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
-        <Navbar
+      <div className="min-h-screen flex flex-col bg-background text-foreground dot-grid relative selection:bg-indigo-500 selection:text-white">
+        <div className="fixed top-0 left-0 right-0 h-1 ribbon-gradient z-50 pointer-events-none"></div>
+        <div
+          style={{ background: 'radial-gradient(circle, var(--aurora-1) 0%, transparent 70%)' }}
+          className="fixed top-0 left-1/4 w-[650px] h-[450px] rounded-full blur-[140px] pointer-events-none -z-10"
+        ></div>
+        <CommandDock
           onOpenAuth={handleOpenAuth}
           onNavigate={(view) => setCurrentView(view)}
           currentView={currentView}
@@ -109,68 +113,81 @@ function MainLayout() {
     );
   }
 
-  // Authenticated users see the SaaS Layout with Sidebar
+  // Authenticated users see the Prismatic Bento-Cockpit Layout
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <Navbar
+    <div className="min-h-screen flex flex-col bg-background text-foreground dot-grid relative selection:bg-indigo-500 selection:text-white">
+      {/* Top Viewport Progress Ribbon */}
+      <div className="fixed top-0 left-0 right-0 h-1 ribbon-gradient z-50 pointer-events-none"></div>
+
+      {/* Floating Ambient Aurora Color Blooms */}
+      <div
+        style={{ background: 'radial-gradient(circle, var(--aurora-1) 0%, transparent 70%)' }}
+        className="fixed top-0 left-1/4 w-[650px] h-[450px] rounded-full blur-[140px] pointer-events-none -z-10"
+      ></div>
+      <div
+        style={{ background: 'radial-gradient(circle, var(--aurora-2) 0%, transparent 70%)' }}
+        className="fixed top-1/3 right-10 w-[550px] h-[400px] rounded-full blur-[120px] pointer-events-none -z-10"
+      ></div>
+
+      {/* Floating Top Glass Command Dock */}
+      <CommandDock
         onOpenAuth={handleOpenAuth}
         onNavigate={(view) => setCurrentView(view)}
         currentView={currentView}
       />
-      <div className="flex-1 flex">
-        <Sidebar currentView={currentView} onNavigate={setCurrentView} />
-        <main className="flex-1 overflow-y-auto">
-          {currentView === 'dashboard' && (
-            <DashboardPage
-              onNavigate={setCurrentView}
-              onOpenAnalysis={handleOpenAnalysis}
-            />
-          )}
-          
-          {currentView === 'resumes' && (
-            <ResumeUploadPage
-              onUploadSuccess={handleUploadSuccess}
-              onCancel={() => setCurrentView('dashboard')}
-            />
-          )}
 
-          {currentView === 'resume-review' && activeResumeId && (
-            <ResumeReviewPage
-              resumeId={activeResumeId}
-              onConfirmSuccess={handleConfirmProfileSuccess}
-              onBack={() => setCurrentView('resumes')}
-            />
-          )}
+      {/* Full-Width Cockpit Main Canvas */}
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 py-6 overflow-y-auto">
+        {currentView === 'dashboard' && (
+          <DashboardPage
+            onNavigate={setCurrentView}
+            onOpenAnalysis={handleOpenAnalysis}
+          />
+        )}
+        
+        {currentView === 'resumes' && (
+          <ResumeUploadPage
+            onUploadSuccess={handleUploadSuccess}
+            onCancel={() => setCurrentView('dashboard')}
+          />
+        )}
 
-          {currentView === 'analyze' && (
-            <JobDescriptionInputPage
-              onJdCreated={handleJdCreated}
-              onBack={() => setCurrentView('dashboard')}
-            />
-          )}
+        {currentView === 'resume-review' && activeResumeId && (
+          <ResumeReviewPage
+            resumeId={activeResumeId}
+            onConfirmSuccess={handleConfirmProfileSuccess}
+            onBack={() => setCurrentView('resumes')}
+          />
+        )}
 
-          {currentView === 'results' && currentAnalysis && (
-            <AnalysisResultsPage
-              analysis={currentAnalysis}
-              onNewAnalysis={() => setCurrentView('analyze')}
-              onNavigate={setCurrentView}
-            />
-          )}
+        {currentView === 'analyze' && (
+          <JobDescriptionInputPage
+            onJdCreated={handleJdCreated}
+            onBack={() => setCurrentView('dashboard')}
+          />
+        )}
 
-          {currentView === 'history' && (
-            <AnalysisHistoryPage
-              onOpenAnalysis={handleOpenAnalysis}
-              onNewAnalysis={() => setCurrentView('analyze')}
-            />
-          )}
+        {currentView === 'results' && currentAnalysis && (
+          <AnalysisResultsPage
+            analysis={currentAnalysis}
+            onNewAnalysis={() => setCurrentView('analyze')}
+            onNavigate={setCurrentView}
+          />
+        )}
 
-          {currentView === 'settings' && (
-            <ProfileSettingsPage
-              onSignOut={() => setCurrentView('dashboard')}
-            />
-          )}
-        </main>
-      </div>
+        {currentView === 'history' && (
+          <AnalysisHistoryPage
+            onOpenAnalysis={handleOpenAnalysis}
+            onNewAnalysis={() => setCurrentView('analyze')}
+          />
+        )}
+
+        {currentView === 'settings' && (
+          <ProfileSettingsPage
+            onSignOut={() => setCurrentView('dashboard')}
+          />
+        )}
+      </main>
     </div>
   );
 }

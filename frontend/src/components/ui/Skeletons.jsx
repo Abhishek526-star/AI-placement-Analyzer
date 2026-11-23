@@ -1,0 +1,124 @@
+import React from 'react';
+import { Loader2 } from 'lucide-react';
+
+/**
+ * 1. Geometry-matched Skeleton for KPI Metric Cards
+ */
+export function SkeletonKPICard({ className = '' }) {
+  return (
+    <div className={`bento-card p-5 rounded-3xl relative overflow-hidden space-y-3.5 ${className}`}>
+      <div className="flex items-center justify-between">
+        <div className="h-3.5 w-28 skeleton-wave rounded-md"></div>
+        <div className="w-5 h-5 skeleton-wave rounded-full"></div>
+      </div>
+      <div className="flex items-baseline justify-between">
+        <div className="h-9 w-24 skeleton-wave rounded-lg"></div>
+        <div className="h-4 w-12 skeleton-wave rounded-md"></div>
+      </div>
+      {/* Breathing 6-bar sparkline skeleton */}
+      <div className="h-6 flex items-end gap-1.5 pt-1">
+        {[40, 60, 50, 85, 70, 95].map((h, i) => (
+          <span
+            key={i}
+            style={{ height: `${h}%` }}
+            className="flex-1 skeleton-wave rounded-sm"
+          ></span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 2. Geometry-matched Skeleton for Spline Area Chart
+ */
+export function SkeletonAreaChart({ title = 'Synthesizing Telemetry...', className = '' }) {
+  return (
+    <div className={`bento-card p-6 rounded-3xl space-y-4 ${className}`}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-3">
+        <div className="space-y-1.5">
+          <div className="h-4 w-60 skeleton-wave rounded-md"></div>
+          <div className="h-3 w-40 skeleton-wave rounded-md"></div>
+        </div>
+        <div className="h-7 w-36 skeleton-wave rounded-xl"></div>
+      </div>
+      {/* SVG Spline Wave Placeholder */}
+      <div className="h-64 w-full skeleton-wave rounded-2xl relative flex items-center justify-center">
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-card/80 border border-border shadow-sm text-xs font-mono">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+          <span>{title}</span>
+        </div>
+      </div>
+      <div className="flex justify-between pt-1">
+        <div className="h-3 w-20 skeleton-wave rounded"></div>
+        <div className="h-3 w-20 skeleton-wave rounded"></div>
+        <div className="h-3 w-20 skeleton-wave rounded"></div>
+        <div className="h-3 w-20 skeleton-wave rounded"></div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 3. Geometry-matched Skeleton for Radial Donut Chart
+ */
+export function SkeletonDonutChart({ className = '' }) {
+  return (
+    <div className={`bento-card p-6 rounded-3xl space-y-4 ${className}`}>
+      <div className="space-y-1.5 border-b border-border/40 pb-3">
+        <div className="h-4 w-40 skeleton-wave rounded-md"></div>
+        <div className="h-3 w-24 skeleton-wave rounded-md"></div>
+      </div>
+      <div className="relative w-44 h-44 mx-auto rounded-full skeleton-wave flex items-center justify-center">
+        <div className="w-24 h-24 rounded-full bg-card"></div>
+      </div>
+      <div className="space-y-2 pt-2">
+        <div className="h-8 w-full skeleton-wave rounded-xl"></div>
+        <div className="h-8 w-full skeleton-wave rounded-xl"></div>
+        <div className="h-8 w-full skeleton-wave rounded-xl"></div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 4. Geometry-matched Skeleton for 6-Axis Radar Chart
+ */
+export function SkeletonRadarChart({ className = '' }) {
+  return (
+    <div className={`bento-card p-6 rounded-3xl space-y-4 ${className}`}>
+      <div className="space-y-1.5 border-b border-border/40 pb-3">
+        <div className="h-4 w-48 skeleton-wave rounded-md"></div>
+        <div className="h-3 w-32 skeleton-wave rounded-md"></div>
+      </div>
+      <div className="relative w-52 h-52 mx-auto rounded-full skeleton-wave flex items-center justify-center">
+        <div className="w-32 h-32 rounded-full border border-dashed border-border/40 animate-radar-sweep"></div>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="h-3 w-full skeleton-wave rounded"></div>
+        <div className="h-3 w-full skeleton-wave rounded"></div>
+        <div className="h-3 w-full skeleton-wave rounded"></div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 5. Geometry-matched Skeleton for Card Grids / Lists
+ */
+export function SkeletonCardGrid({ count = 3, className = '' }) {
+  return (
+    <div className={`space-y-3 ${className}`}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="p-4 rounded-2xl bento-card space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-48 skeleton-wave rounded-md"></div>
+            <div className="h-5 w-20 skeleton-wave rounded-full"></div>
+          </div>
+          <div className="h-3 w-full skeleton-wave rounded"></div>
+          <div className="h-3 w-3/4 skeleton-wave rounded"></div>
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -1,19 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronUp, Quote, Sparkles,
   BookOpen, HelpCircle, Lightbulb, MapPin, Loader2, ArrowRight, ShieldCheck,
   ListOrdered, Layers, Target, Compass, Printer, Download, FileText,
-  Mic, Play, Award, RefreshCw, Send, Check, Zap, Edit3, Save, Copy, ArrowUpRight
+  Mic, Play, Award, RefreshCw, Send, Check, Zap, Edit3, Save, Copy, ArrowUpRight,
+  Activity, BarChart3
 } from 'lucide-react';
 import { apiClient } from '../lib/api.js';
 import { useToast } from '../context/ToastContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
+import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
+import {
+  SkeletonKPICard,
+  SkeletonAreaChart,
+  SkeletonDonutChart,
+  SkeletonRadarChart,
+  SkeletonCardGrid
+} from '../components/ui/Skeletons.jsx';
 
 export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
   const { toast } = useToast();
+  const { skeletonSimulator } = useTheme();
+
   const [activeTab, setActiveTab] = useState('overview');
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedSkill, setExpandedSkill] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [hoveredSkillIdx, setHoveredSkillIdx] = useState(null);
+  const [hoveredRadarIdx, setHoveredRadarIdx] = useState(null);
 
   // Career Intelligence States
   const [questions, setQuestions] = useState([]);
@@ -63,9 +77,9 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
   });
 
   const getStatusColor = (level) => {
-    if (level === 'strong') return 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,0.2)]';
-    if (level === 'moderate') return 'text-amber-400 border-amber-500/30 bg-amber-500/10 shadow-[0_0_12px_rgba(245,158,11,0.2)]';
-    return 'text-rose-400 border-rose-500/30 bg-rose-500/10 shadow-[0_0_12px_rgba(244,63,94,0.2)]';
+    if (level === 'strong') return 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,0.25)]';
+    if (level === 'moderate') return 'text-amber-400 border-amber-500/30 bg-amber-500/10 shadow-[0_0_12px_rgba(245,158,11,0.25)]';
+    return 'text-rose-400 border-rose-500/30 bg-rose-500/10 shadow-[0_0_12px_rgba(244,63,94,0.25)]';
   };
 
   const scoreStrokeColor = matchScore >= 75
@@ -75,10 +89,47 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
     : '#EF4444';
 
   const scoreGlowClass = matchScore >= 75
-    ? 'drop-shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+    ? 'drop-shadow-[0_0_16px_rgba(16,185,129,0.55)]'
     : matchScore >= 50
-    ? 'drop-shadow-[0_0_12px_rgba(245,158,11,0.5)]'
-    : 'drop-shadow-[0_0_12px_rgba(239,68,68,0.5)]';
+    ? 'drop-shadow-[0_0_16px_rgba(245,158,11,0.55)]'
+    : 'drop-shadow-[0_0_16px_rgba(239,68,68,0.55)]';
+
+  // 6-Axis Radar Computations based on candidate's skill taxonomy
+  const radarAxes = useMemo(() => {
+    const categories = [
+      { name: 'Core Languages', regex: /javascript|typescript|python|c\+\+|java|golang|ruby|rust|c#/i, weight: 1.0 },
+      { name: 'System Architecture', regex: /architecture|system design|microservices|rest|mvc|oop|design patterns|api/i, weight: 0.95 },
+      { name: 'Backend & APIs', regex: /node|express|backend|fastapi|django|flask|spring|grpc|server/i, weight: 0.9 },
+      { name: 'Databases & Storage', regex: /mongo|sql|postgres|redis|database|query|index|orm|prisma/i, weight: 0.85 },
+      { name: 'Frontend & UI', regex: /react|vue|angular|css|html|tailwind|three\.js|redux|ui|frontend/i, weight: 0.92 },
+      { name: 'DevOps & Testing', regex: /docker|kubernetes|aws|cloud|ci\/cd|test|jest|cypress|git|devops/i, weight: 0.8 }
+    ];
+
+    return categories.map((cat) => {
+      const related = skillMatches.filter((m) => cat.regex.test(m.skill_name));
+      let scoreVal = Math.round(matchScore * cat.weight);
+      if (related.length > 0) {
+        const totalW = related.reduce((acc, m) => acc + (m.weight || 10), 0);
+        const earnedW = related.reduce((acc, m) => acc + (m.score || 0), 0);
+        scoreVal = Math.min(100, Math.max(35, Math.round((earnedW / totalW) * 100)));
+      } else {
+        scoreVal = Math.min(95, Math.max(45, Math.round(matchScore * (0.8 + (cat.weight * 0.2)))));
+      }
+      return { label: cat.name, value: scoreVal };
+    });
+  }, [skillMatches, matchScore]);
+
+  // SVG Spline Points for Skill Coverage Curve
+  const splineData = useMemo(() => {
+    if (!skillMatches || skillMatches.length === 0) return [];
+    return skillMatches.slice(0, 10).map((m, idx) => ({
+      name: m.skill_name,
+      earned: m.score,
+      total: m.weight,
+      status: m.status,
+      pct: Math.round(((m.score || 0) / (m.weight || 10)) * 100)
+    }));
+  }, [skillMatches]);
 
   // Fetch Interview Questions
   const loadInterviewQuestions = async (regenerate = false) => {
@@ -137,7 +188,6 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      // Pre-load all sections if not already loaded so report is 100% complete
       const loadTasks = [];
       if (questions.length === 0 && !loadingQuestions) loadTasks.push(loadInterviewQuestions());
       if (roadmap.length === 0 && !loadingRoadmap) loadTasks.push(loadRoadmap());
@@ -147,7 +197,6 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
         await Promise.all(loadTasks);
       }
 
-      // Small delay to ensure printable DOM is populated
       setTimeout(() => {
         setIsExporting(false);
         window.print();
@@ -278,24 +327,24 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="space-y-6">
       {/* ========================================================================= */}
       {/* SCREEN VIEW (Hidden when printing to PDF)                                 */}
       {/* ========================================================================= */}
       <div className="print:hidden space-y-6">
-        {/* Linear Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
+        {/* Bento Header & Command Bar */}
+        <div className="bento-card p-6 sm:p-7 rounded-3xl relative overflow-hidden flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                 {analysis?.title || 'Job Compatibility Analysis'}
               </h1>
-              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(alignment)}`}>
+              <span className={`px-3 py-0.5 rounded-full text-xs font-mono-numbers font-bold uppercase tracking-wider border ${getStatusColor(alignment)}`}>
                 ● {alignment} alignment
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
-              <span>Deterministic Score (FR-08)</span>
+            <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
+              <span className="font-medium text-foreground/80">Deterministic Score (PRD FR-08)</span>
               <span>•</span>
               <span>100% Reproducible Application Math</span>
               <span>•</span>
@@ -303,33 +352,32 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
+          <div className="flex items-center gap-3 shrink-0">
+            <ColorfulButton
+              variant="glass"
+              size="md"
+              icon={Printer}
+              loading={isExporting}
+              loadingText="Preparing Report..."
               onClick={handleExportPDF}
-              disabled={isExporting}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold shadow-sm transition-all hover:scale-[1.01]"
               title="Download printable placement preparation report"
             >
-              {isExporting ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-              ) : (
-                <Printer className="w-3.5 h-3.5 text-primary" />
-              )}
-              <span>{isExporting ? 'Preparing Report...' : 'Export PDF Report'}</span>
-            </button>
+              Export PDF Report
+            </ColorfulButton>
 
-            <button
+            <ColorfulButton
+              variant="prism"
+              size="md"
+              icon={Sparkles}
               onClick={onNewAnalysis}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 via-indigo-600 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white text-xs font-bold shadow-[0_0_16px_rgba(99,102,241,0.35)] hover:shadow-[0_0_22px_rgba(99,102,241,0.5)] transition-all hover:scale-[1.01]"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Analyze Another JD</span>
-            </button>
+              Analyze Another JD
+            </ColorfulButton>
           </div>
         </div>
 
-        {/* Linear Sub-Navigation Pill Tabs */}
-        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-card border border-border shadow-inner overflow-x-auto">
+        {/* Bento Glass Sub-Navigation Pill Dock */}
+        <div className="bento-card p-1.5 rounded-2xl flex items-center gap-1.5 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -337,17 +385,17 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
-                className={`flex-1 min-w-[130px] py-2 px-3 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                className={`flex-1 min-w-[140px] py-2 px-3 text-xs font-display font-bold rounded-xl transition-all flex items-center justify-center gap-2 select-none ${
                   isActive
-                    ? 'bg-gradient-to-b from-slate-800 to-slate-900 text-white shadow-md border border-slate-700/80 font-bold'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    ? 'bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-indigo-500/20 text-foreground border border-primary/50 shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
                 }`}
               >
                 <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                 <span>{tab.label}</span>
                 {tab.count !== undefined && (
-                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-                    isActive ? 'bg-primary/20 text-indigo-300 font-bold' : 'bg-muted text-muted-foreground'
+                  <span className={`text-[10px] font-mono-numbers px-2 py-0.2 rounded-full ${
+                    isActive ? 'bg-primary/20 text-indigo-300 font-extrabold' : 'bg-muted text-muted-foreground'
                   }`}>
                     {tab.count}
                   </span>
@@ -357,133 +405,475 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
           })}
         </div>
 
-        {/* 1. OVERVIEW TAB */}
+        {/* ======================================================================= */}
+        {/* 1. MATCH OVERVIEW TAB                                                  */}
+        {/* ======================================================================= */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Circular Gauge Card */}
-              <div className="p-8 rounded-2xl border border-border bg-card shadow-lg flex flex-col items-center justify-center text-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-radial from-primary/5 via-transparent to-transparent pointer-events-none"></div>
-
-                <div className="relative w-44 h-44 flex items-center justify-center">
-                  <svg className={`w-full h-full transform -rotate-90 ${scoreGlowClass}`} viewBox="0 0 100 100">
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      fill="transparent"
-                      stroke="currentColor"
-                      strokeWidth="9"
-                      className="text-muted/40"
-                    />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      fill="transparent"
-                      stroke={scoreStrokeColor}
-                      strokeWidth="9"
-                      strokeDasharray={`${2 * Math.PI * 40}`}
-                      strokeDashoffset={`${2 * Math.PI * 40 * (1 - matchScore / 100)}`}
-                      strokeLinecap="round"
-                      className="transition-all duration-1000 ease-out"
-                    />
-                  </svg>
-
-                  <div className="absolute flex flex-col items-center select-none">
-                    <span className="text-4xl sm:text-5xl font-black text-foreground font-mono tracking-tight">
-                      {matchScore}%
-                    </span>
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
-                      Compatibility
-                    </span>
+            {skeletonSimulator ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                  <SkeletonDonutChart className="lg:col-span-4" />
+                  <SkeletonRadarChart className="lg:col-span-4" />
+                  <div className="lg:col-span-4 space-y-4">
+                    <SkeletonKPICard />
+                    <SkeletonKPICard />
                   </div>
                 </div>
-
-                <h3 className="font-bold text-base text-foreground mt-4 capitalize">
-                  {alignment} Alignment Rating
-                </h3>
-                <p className="text-xs text-muted-foreground max-w-xs mt-1">
-                  Deterministic mathematical scoring calculated strictly against weighted job requirements.
-                </p>
-
-                {/* Formula Card */}
-                <div className="mt-4 p-3 rounded-xl bg-background/80 border border-border text-[11px] text-muted-foreground text-left w-full space-y-1 font-mono">
-                  <div className="font-semibold text-foreground flex items-center justify-between">
-                    <span>Application Formula:</span>
-                    <span className="text-[10px] text-primary">PRD FR-08</span>
-                  </div>
-                  <div>Earned: <span className="text-foreground font-bold">{breakdown.earned_weight}</span> / Total: <span className="text-foreground font-bold">{breakdown.total_weight} pts</span></div>
-                  <div className="text-[10px] text-muted-foreground/80">({breakdown.earned_weight} ÷ {breakdown.total_weight}) × 100 = {matchScore}%</div>
-                </div>
+                <SkeletonAreaChart title="Synthesizing Match Telemetry Curve..." />
               </div>
+            ) : (
+              <>
+                {/* 12-Column Bento Grid: Donut Gauge, Competency Radar & Telemetry Breakdown */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                  {/* Col 1-4: Compatibility Donut Gauge Bento Card */}
+                  <div className="lg:col-span-4 bento-card p-6 sm:p-7 rounded-3xl relative overflow-hidden flex flex-col items-center justify-between text-center">
+                    <div className="w-full flex items-center justify-between text-xs text-muted-foreground border-b border-border/40 pb-3">
+                      <span className="font-display font-semibold uppercase tracking-wider text-[11px]">
+                        Deterministic Match Score
+                      </span>
+                      <Target className="w-4 h-4 text-emerald-400" />
+                    </div>
 
-              {/* Metric Breakdown Cards */}
-              <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Fully Matched */}
-                <div className="p-6 rounded-2xl border border-border bg-card shadow-md flex flex-col justify-between relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-emerald-500">
-                  <div className="flex items-center justify-between text-emerald-400">
-                    <span className="text-xs font-bold uppercase tracking-wider">Fully Matched</span>
-                    <CheckCircle2 className="w-5 h-5" />
+                    <div className="relative w-44 h-44 my-4 flex items-center justify-center">
+                      <svg className={`w-full h-full transform -rotate-90 ${scoreGlowClass}`} viewBox="0 0 100 100">
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="transparent"
+                          stroke="currentColor"
+                          strokeWidth="9"
+                          className="text-muted/30"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="transparent"
+                          stroke={scoreStrokeColor}
+                          strokeWidth="9"
+                          strokeDasharray={`${2 * Math.PI * 40}`}
+                          strokeDashoffset={`${2 * Math.PI * 40 * (1 - matchScore / 100)}`}
+                          strokeLinecap="round"
+                          className="transition-all duration-1000 ease-out"
+                        />
+                      </svg>
+
+                      <div className="absolute flex flex-col items-center select-none">
+                        <span className="text-4xl sm:text-5xl font-black text-foreground font-mono-numbers tracking-tight">
+                          {matchScore}%
+                        </span>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                          Compatibility
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="font-display font-bold text-base text-foreground capitalize">
+                        {alignment} Alignment Rating
+                      </h3>
+                      <p className="text-xs text-muted-foreground max-w-xs">
+                        Calculated strictly against weighted job requirements.
+                      </p>
+                    </div>
+
+                    {/* PRD FR-08 Math Formula Card */}
+                    <div className="mt-4 p-3.5 rounded-2xl bg-card/70 border border-border/60 text-[11px] text-muted-foreground text-left w-full space-y-1 font-mono-numbers">
+                      <div className="font-semibold text-foreground flex items-center justify-between">
+                        <span>Application Formula:</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">PRD FR-08</span>
+                      </div>
+                      <div className="text-xs">
+                        Earned: <span className="text-foreground font-bold">{breakdown.earned_weight}</span> / Total: <span className="text-foreground font-bold">{breakdown.total_weight} pts</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground/80">
+                        ({breakdown.earned_weight} ÷ {breakdown.total_weight}) × 100 = {matchScore}%
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-4xl font-extrabold text-foreground mt-4 font-mono">
-                    {breakdown.matched_count}
+
+                  {/* Col 5-8: 6-Axis Interactive Competency Radar Bento Card */}
+                  <div className="lg:col-span-4 bento-card p-6 sm:p-7 rounded-3xl relative overflow-hidden flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border/40 pb-3">
+                      <span className="font-display font-semibold uppercase tracking-wider text-[11px]">
+                        6-Axis Competency Radar
+                      </span>
+                      <Activity className="w-4 h-4 text-cyan-400" />
+                    </div>
+
+                    {/* Interactive SVG Radar Chart */}
+                    <div className="relative w-full aspect-square max-w-[260px] mx-auto my-2 flex items-center justify-center">
+                      <svg viewBox="0 0 240 240" className="w-full h-full overflow-visible">
+                        <defs>
+                          <radialGradient id="radarRadial" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="var(--primary, #8b5cf6)" stopOpacity="0.45" />
+                            <stop offset="100%" stopColor="var(--primary, #8b5cf6)" stopOpacity="0.05" />
+                          </radialGradient>
+                        </defs>
+
+                        {/* Concentric Hexagon Rings (25%, 50%, 75%, 100%) */}
+                        {[0.25, 0.5, 0.75, 1.0].map((scale, sIdx) => {
+                          const pts = Array.from({ length: 6 }).map((_, i) => {
+                            const angle = (-90 + i * 60) * (Math.PI / 180);
+                            const r = 85 * scale;
+                            const x = 120 + r * Math.cos(angle);
+                            const y = 120 + r * Math.sin(angle);
+                            return `${x},${y}`;
+                          }).join(' ');
+                          return (
+                            <polygon
+                              key={sIdx}
+                              points={pts}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1"
+                              className="text-border/60"
+                              strokeDasharray={scale === 1 ? 'none' : '3 3'}
+                            />
+                          );
+                        })}
+
+                        {/* Radial Axis Spokes */}
+                        {Array.from({ length: 6 }).map((_, i) => {
+                          const angle = (-90 + i * 60) * (Math.PI / 180);
+                          const x2 = 120 + 85 * Math.cos(angle);
+                          const y2 = 120 + 85 * Math.sin(angle);
+                          return (
+                            <line
+                              key={i}
+                              x1="120"
+                              y1="120"
+                              x2={x2}
+                              y2={y2}
+                              stroke="currentColor"
+                              strokeWidth="1"
+                              className="text-border/50"
+                            />
+                          );
+                        })}
+
+                        {/* Candidate's Data Polygon */}
+                        {(() => {
+                          const polyPoints = radarAxes.map((ax, i) => {
+                            const angle = (-90 + i * 60) * (Math.PI / 180);
+                            const r = (ax.value / 100) * 85;
+                            const x = 120 + r * Math.cos(angle);
+                            const y = 120 + r * Math.sin(angle);
+                            return `${x},${y}`;
+                          }).join(' ');
+
+                          return (
+                            <>
+                              <polygon
+                                points={polyPoints}
+                                fill="url(#radarRadial)"
+                                stroke="#a855f7"
+                                strokeWidth="2.5"
+                                className="filter drop-shadow-[0_0_8px_rgba(168,85,247,0.4)] transition-all duration-700"
+                              />
+                              {/* Glowing Vertex Dots */}
+                              {radarAxes.map((ax, i) => {
+                                const angle = (-90 + i * 60) * (Math.PI / 180);
+                                const r = (ax.value / 100) * 85;
+                                const x = 120 + r * Math.cos(angle);
+                                const y = 120 + r * Math.sin(angle);
+                                const isHov = hoveredRadarIdx === i;
+                                return (
+                                  <g
+                                    key={i}
+                                    onMouseEnter={() => setHoveredRadarIdx(i)}
+                                    onMouseLeave={() => setHoveredRadarIdx(null)}
+                                    className="cursor-pointer"
+                                  >
+                                    <circle
+                                      cx={x}
+                                      cy={y}
+                                      r={isHov ? 6 : 4}
+                                      fill="#ffffff"
+                                      stroke="#a855f7"
+                                      strokeWidth="2.5"
+                                      className="transition-all"
+                                    />
+                                  </g>
+                                );
+                              })}
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    </div>
+
+                    {/* Radar Legend / Live Telemetry Node */}
+                    <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-border/40 text-[11px] font-mono-numbers">
+                      {radarAxes.map((ax, i) => (
+                        <div
+                          key={i}
+                          onMouseEnter={() => setHoveredRadarIdx(i)}
+                          onMouseLeave={() => setHoveredRadarIdx(null)}
+                          className={`p-1.5 rounded-lg border transition-all flex items-center justify-between ${
+                            hoveredRadarIdx === i
+                              ? 'bg-primary/20 border-primary text-foreground font-bold'
+                              : 'bg-card/50 border-border/40 text-muted-foreground'
+                          }`}
+                        >
+                          <span className="truncate pr-1 text-[10px]">{ax.label}</span>
+                          <span className="text-primary font-bold">{ax.value}%</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Verified with exact resume project evidence.</p>
+
+                  {/* Col 9-12: Match Breakdown Cards */}
+                  <div className="lg:col-span-4 flex flex-col gap-4">
+                    {/* Fully Matched */}
+                    <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex-1 flex flex-col justify-between before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-emerald-500">
+                      <div className="flex items-center justify-between text-emerald-400">
+                        <span className="font-display text-xs font-bold uppercase tracking-wider">Fully Matched</span>
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                      <div className="flex items-baseline justify-between mt-2">
+                        <div className="text-3xl sm:text-4xl font-extrabold text-foreground font-mono-numbers">
+                          {breakdown.matched_count}
+                        </div>
+                        <span className="text-xs font-mono font-bold text-emerald-400">Verified</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Direct project citations confirmed.</p>
+                      {/* Mini Sparkline */}
+                      <div className="h-4 flex items-end gap-1 pt-1">
+                        {[60, 80, 70, 90, 85, 100].map((h, i) => (
+                          <span key={i} style={{ height: `${h}%` }} className="flex-1 bg-emerald-500/40 rounded-sm"></span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Partially Matched */}
+                    <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex-1 flex flex-col justify-between before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-amber-500">
+                      <div className="flex items-center justify-between text-amber-400">
+                        <span className="font-display text-xs font-bold uppercase tracking-wider">Partially Matched</span>
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <div className="flex items-baseline justify-between mt-2">
+                        <div className="text-3xl sm:text-4xl font-extrabold text-foreground font-mono-numbers">
+                          {breakdown.partial_count}
+                        </div>
+                        <span className="text-xs font-mono font-bold text-amber-400">Related</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Related engineering background.</p>
+                      {/* Mini Sparkline */}
+                      <div className="h-4 flex items-end gap-1 pt-1">
+                        {[40, 50, 65, 55, 70, 60].map((h, i) => (
+                          <span key={i} style={{ height: `${h}%` }} className="flex-1 bg-amber-500/40 rounded-sm"></span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Missing Skills */}
+                    <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex-1 flex flex-col justify-between before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-rose-500">
+                      <div className="flex items-center justify-between text-rose-400">
+                        <span className="font-display text-xs font-bold uppercase tracking-wider">Priority Gaps</span>
+                        <XCircle className="w-5 h-5" />
+                      </div>
+                      <div className="flex items-baseline justify-between mt-2">
+                        <div className="text-3xl sm:text-4xl font-extrabold text-foreground font-mono-numbers">
+                          {breakdown.missing_count}
+                        </div>
+                        <span className="text-xs font-mono font-bold text-rose-400">Action Required</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Recommended for sprint practice.</p>
+                      {/* Mini Sparkline */}
+                      <div className="h-4 flex items-end gap-1 pt-1">
+                        {[90, 75, 60, 45, 30, 20].map((h, i) => (
+                          <span key={i} style={{ height: `${h}%` }} className="flex-1 bg-rose-500/40 rounded-sm"></span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Partially Matched */}
-                <div className="p-6 rounded-2xl border border-border bg-card shadow-md flex flex-col justify-between relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-amber-500">
-                  <div className="flex items-center justify-between text-amber-400">
-                    <span className="text-xs font-bold uppercase tracking-wider">Partially Matched</span>
-                    <AlertCircle className="w-5 h-5" />
+                {/* Spline Area Telemetry Curve: Requirement Weight Distribution */}
+                <div className="bento-card p-6 sm:p-7 rounded-3xl space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-3">
+                    <div className="space-y-0.5">
+                      <h3 className="font-display font-bold text-base text-foreground">
+                        Skill Weight & Alignment Telemetry
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Interactive breakdown of earned weight vs target JD requirement weight.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs font-mono-numbers">
+                      <div className="flex items-center gap-1.5 text-emerald-400">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                        <span>Matched</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-amber-400">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                        <span>Partial</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-rose-400">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+                        <span>Gap</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-4xl font-extrabold text-foreground mt-4 font-mono">
-                    {breakdown.partial_count}
+
+                  {/* Interactive Spline Curve SVG */}
+                  <div className="relative h-60 w-full pt-2">
+                    <svg viewBox="0 0 800 200" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="splineGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Horizontal Grid lines */}
+                      {[40, 90, 140].map((y, idx) => (
+                        <line
+                          key={idx}
+                          x1="0"
+                          y1={y}
+                          x2="800"
+                          y2={y}
+                          stroke="currentColor"
+                          strokeWidth="1"
+                          className="text-border/40"
+                          strokeDasharray="4 4"
+                        />
+                      ))}
+
+                      {/* Area Fill & Stroke Path */}
+                      {(() => {
+                        if (splineData.length < 2) return null;
+                        const stepX = 800 / (splineData.length - 1);
+                        const points = splineData.map((d, i) => {
+                          const x = i * stepX;
+                          const y = 180 - (d.pct / 100) * 140;
+                          return { x, y, ...d };
+                        });
+
+                        // Generate smooth path
+                        let dPath = `M ${points[0].x} ${points[0].y}`;
+                        for (let i = 0; i < points.length - 1; i++) {
+                          const p0 = points[i];
+                          const p1 = points[i + 1];
+                          const cpX1 = p0.x + (p1.x - p0.x) / 2;
+                          const cpY1 = p0.y;
+                          const cpX2 = p0.x + (p1.x - p0.x) / 2;
+                          const cpY2 = p1.y;
+                          dPath += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p1.x} ${p1.y}`;
+                        }
+
+                        const dArea = `${dPath} L ${800} 190 L 0 190 Z`;
+
+                        return (
+                          <>
+                            <path d={dArea} fill="url(#splineGradient)" />
+                            <path
+                              d={dPath}
+                              fill="none"
+                              stroke="#a855f7"
+                              strokeWidth="3"
+                              className="filter drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]"
+                            />
+                            {points.map((p, i) => {
+                              const isHov = hoveredSkillIdx === i;
+                              const nodeColor = p.status === 'matched' ? '#10b981' : p.status === 'partially_matched' ? '#f59e0b' : '#ef4444';
+                              return (
+                                <g
+                                  key={i}
+                                  onMouseEnter={() => setHoveredSkillIdx(i)}
+                                  onMouseLeave={() => setHoveredSkillIdx(null)}
+                                  className="cursor-pointer"
+                                >
+                                  <circle
+                                    cx={p.x}
+                                    cy={p.y}
+                                    r={isHov ? 7 : 4.5}
+                                    fill={nodeColor}
+                                    stroke="#ffffff"
+                                    strokeWidth="2"
+                                    className="transition-all"
+                                  />
+                                </g>
+                              );
+                            })}
+                          </>
+                        );
+                      })()}
+                    </svg>
+
+                    {/* Tooltip on Hover */}
+                    {hoveredSkillIdx !== null && splineData[hoveredSkillIdx] && (
+                      <div
+                        className="absolute -top-3 p-2.5 rounded-xl bg-card border border-border shadow-lg text-xs font-mono-numbers pointer-events-none transform -translate-x-1/2 z-10 space-y-0.5"
+                        style={{
+                          left: `${(hoveredSkillIdx / (splineData.length - 1)) * 100}%`
+                        }}
+                      >
+                        <div className="font-bold text-foreground">{splineData[hoveredSkillIdx].name}</div>
+                        <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                          <span>Score: <strong className="text-primary">{splineData[hoveredSkillIdx].earned} pts</strong></span>
+                          <span>•</span>
+                          <span>Weight: <strong>{splineData[hoveredSkillIdx].total} pts</strong></span>
+                          <span>•</span>
+                          <span className="capitalize">{splineData[hoveredSkillIdx].status.replace('_', ' ')}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Related engineering background demonstrated.</p>
+
+                  {/* X-Axis Skill Labels */}
+                  <div className="flex justify-between text-[10px] text-muted-foreground font-mono-numbers pt-1 overflow-x-auto">
+                    {splineData.map((d, i) => (
+                      <span
+                        key={i}
+                        onMouseEnter={() => setHoveredSkillIdx(i)}
+                        onMouseLeave={() => setHoveredSkillIdx(null)}
+                        className={`cursor-pointer truncate max-w-[70px] text-center ${hoveredSkillIdx === i ? 'text-primary font-bold' : ''}`}
+                      >
+                        {d.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Missing Skills */}
-                <div className="p-6 rounded-2xl border border-border bg-card shadow-md flex flex-col justify-between relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-rose-500">
-                  <div className="flex items-center justify-between text-rose-400">
-                    <span className="text-xs font-bold uppercase tracking-wider">Missing Skills</span>
-                    <XCircle className="w-5 h-5" />
-                  </div>
-                  <div className="text-4xl font-extrabold text-foreground mt-4 font-mono">
-                    {breakdown.missing_count}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Priority gap areas for study and portfolio.</p>
-                </div>
-
-                {/* Disclaimer Banner */}
-                <div className="sm:col-span-3 p-4 rounded-xl bg-card border border-border flex items-start gap-3 text-xs text-muted-foreground">
+                {/* Evidence-First ATS Guarantee Bento Card */}
+                <div className="bento-card p-5 rounded-3xl flex items-start gap-3.5 text-xs text-muted-foreground">
                   <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold text-foreground block">Evidence-First ATS Guarantee</span>
+                    <span className="font-display font-bold text-foreground text-sm block">
+                      Evidence-First ATS Mathematical Guarantee (PRD FR-08)
+                    </span>
                     <p className="mt-0.5 leading-relaxed">
-                      Match scores are mathematical estimates derived from canonical skill taxonomy and document chunk retrieval. They reflect resume alignment and do not guarantee interview callback or hiring decisions.
+                      Match scores are deterministic mathematical estimates derived from canonical skill taxonomy and exact document chunk retrieval. They reflect resume alignment and do not guarantee interview callback or hiring decisions.
                     </p>
                   </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         )}
 
-        {/* 2. SKILL BREAKDOWN TAB */}
+        {/* ======================================================================= */}
+        {/* 2. SKILL BREAKDOWN TAB                                                 */}
+        {/* ======================================================================= */}
         {activeTab === 'skills' && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 overflow-x-auto">
-              <span className="text-xs font-semibold text-muted-foreground mr-1">Filter by status:</span>
+          <div className="space-y-5">
+            {/* Status Filter Bar */}
+            <div className="flex items-center gap-2 pb-1 overflow-x-auto">
+              <span className="text-xs font-display font-semibold text-muted-foreground mr-1">Filter by status:</span>
               {['all', 'matched', 'partially_matched', 'missing'].map((st) => (
                 <button
                   key={st}
                   onClick={() => setFilterStatus(st)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-all ${
+                  className={`btn-tactile px-3.5 py-1.5 rounded-full text-xs font-display font-bold capitalize transition-all ${
                     filterStatus === st
-                      ? 'bg-primary text-white shadow-sm font-bold'
-                      : 'bg-card border border-border text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-white shadow-md'
+                      : 'bg-card/70 border border-border text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {st.replace('_', ' ')}
@@ -491,111 +881,123 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
               ))}
             </div>
 
-            <div className="space-y-3">
-              {filteredMatches.map((m) => {
-                const isExpanded = expandedSkill === m.skill_name;
-                return (
-                  <div
-                    key={m.skill_name}
-                    className="rounded-xl border border-border bg-card shadow-sm hover:border-slate-700 transition-all overflow-hidden"
-                  >
+            {skeletonSimulator ? (
+              <SkeletonCardGrid count={6} />
+            ) : (
+              <div className="space-y-3">
+                {filteredMatches.map((m) => {
+                  const isExpanded = expandedSkill === m.skill_name;
+                  return (
                     <div
-                      onClick={() => setExpandedSkill(isExpanded ? null : m.skill_name)}
-                      className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 select-none"
+                      key={m.skill_name}
+                      className="bento-card rounded-2xl transition-all overflow-hidden"
                     >
-                      <div className="flex items-center gap-3">
-                        {m.status === 'matched' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
-                        {m.status === 'partially_matched' && <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />}
-                        {m.status === 'missing' && <XCircle className="w-5 h-5 text-rose-400 shrink-0" />}
+                      <div
+                        onClick={() => setExpandedSkill(isExpanded ? null : m.skill_name)}
+                        className="p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-card/60 select-none"
+                      >
+                        <div className="flex items-center gap-3.5">
+                          {m.status === 'matched' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
+                          {m.status === 'partially_matched' && <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />}
+                          {m.status === 'missing' && <XCircle className="w-5 h-5 text-rose-400 shrink-0" />}
 
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-foreground text-sm">{m.skill_name}</span>
-                            <span className="text-[10px] px-2 py-0.5 rounded uppercase font-semibold bg-muted text-muted-foreground font-mono">
-                              {m.jd_importance} • {m.weight} pts
-                            </span>
+                          <div>
+                            <div className="flex items-center gap-2.5">
+                              <span className="font-display font-bold text-foreground text-sm">{m.skill_name}</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full uppercase font-bold bg-muted text-muted-foreground font-mono-numbers">
+                                {m.jd_importance} • {m.weight} pts
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{m.explanation}</p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{m.explanation}</p>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          <span className="font-mono-numbers text-xs font-extrabold text-foreground">
+                            +{m.score} pts
+                          </span>
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4">
-                        <span className="font-mono text-xs font-bold text-foreground">
-                          +{m.score} pts
-                        </span>
-                        {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="p-4 bg-background/50 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                        <div className="p-3.5 rounded-xl bg-card border border-border space-y-2">
-                          <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                            <Quote className="w-3.5 h-3.5 text-primary" />
-                            <span>Candidate Resume Evidence:</span>
+                      {isExpanded && (
+                        <div className="p-4 sm:p-5 bg-card/40 border-t border-border/40 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                          <div className="p-4 rounded-2xl bg-card/80 border border-border/60 space-y-2">
+                            <div className="flex items-center gap-1.5 font-display font-semibold text-foreground">
+                              <Quote className="w-3.5 h-3.5 text-primary" />
+                              <span>Candidate Resume Evidence:</span>
+                            </div>
+                            {m.resume_evidence?.length > 0 ? (
+                              m.resume_evidence.map((ev, i) => (
+                                <p key={i} className="text-muted-foreground italic bg-background/80 p-3 rounded-xl border border-border/60 font-mono-numbers text-[11px] leading-relaxed">
+                                  "{ev.quote}"
+                                </p>
+                              ))
+                            ) : (
+                              <p className="text-rose-400 italic">No supporting evidence found in candidate resume.</p>
+                            )}
                           </div>
-                          {m.resume_evidence?.length > 0 ? (
-                            m.resume_evidence.map((ev, i) => (
-                              <p key={i} className="text-muted-foreground italic bg-background/80 p-2.5 rounded-lg border border-border font-mono text-[11px]">
+
+                          <div className="p-4 rounded-2xl bg-card/80 border border-border/60 space-y-2">
+                            <div className="flex items-center gap-1.5 font-display font-semibold text-foreground">
+                              <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+                              <span>Job Description Excerpt:</span>
+                            </div>
+                            {m.jd_evidence?.map((ev, i) => (
+                              <p key={i} className="text-muted-foreground italic bg-background/80 p-3 rounded-xl border border-border/60 font-mono-numbers text-[11px] leading-relaxed">
                                 "{ev.quote}"
                               </p>
-                            ))
-                          ) : (
-                            <p className="text-rose-400 italic">No supporting evidence found in candidate resume.</p>
-                          )}
-                        </div>
-
-                        <div className="p-3.5 rounded-xl bg-card border border-border space-y-2">
-                          <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                            <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
-                            <span>Job Description Excerpt:</span>
+                            ))}
+                            {m.recommended_next_step && (
+                              <div className="mt-2.5 pt-2.5 border-t border-border/40 text-foreground font-medium">
+                                <span className="text-primary font-bold">Actionable Next Step: </span>
+                                {m.recommended_next_step}
+                              </div>
+                            )}
                           </div>
-                          {m.jd_evidence?.map((ev, i) => (
-                            <p key={i} className="text-muted-foreground italic bg-background/80 p-2.5 rounded-lg border border-border font-mono text-[11px]">
-                              "{ev.quote}"
-                            </p>
-                          ))}
-                          {m.recommended_next_step && (
-                            <div className="mt-2 pt-2 border-t border-border text-foreground font-medium">
-                              <span className="text-primary font-bold">Actionable Next Step: </span>
-                              {m.recommended_next_step}
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* 3. LIVE BULLET OPTIMIZER & RE-SCORER TAB */}
+        {/* ======================================================================= */}
+        {/* 3. LIVE BULLET OPTIMIZER & RE-SCORER TAB                               */}
+        {/* ======================================================================= */}
         {activeTab === 'rescore' && (
-          <div className="space-y-5">
+          <div className="space-y-6">
             {/* Header Description */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-border">
+            <div className="bento-card p-5 sm:p-6 rounded-3xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-primary" />
-                  <h3 className="font-bold text-foreground text-base">Live Resume Bullet Optimizer & ATS Re-Scorer</h3>
+                  <h3 className="font-display font-bold text-foreground text-base">
+                    Live Resume Bullet Optimizer & ATS Re-Scorer
+                  </h3>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Optimize your project bullet points in real time to simulate exact score deltas and newly verified skills before updating your resume.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={isSimulating}
-                  onClick={() => handleSimulateBullet()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-all shadow-sm"
-                >
-                  {isSimulating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                  <span>Re-Calculate Score</span>
-                </button>
-              </div>
+
+              <ColorfulButton
+                variant="emerald"
+                size="md"
+                icon={RefreshCw}
+                loading={isSimulating}
+                loadingText="Re-Scoring..."
+                onClick={() => handleSimulateBullet()}
+              >
+                Re-Calculate Score
+              </ColorfulButton>
             </div>
 
             {/* Project Quick-Switch Tabs */}
@@ -626,10 +1028,10 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                     setEditableBulletText(proj.starter);
                     handleSimulateBullet(proj.starter);
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 border ${
+                  className={`btn-tactile px-4 py-2 rounded-2xl text-xs font-display font-bold transition-all shrink-0 border ${
                     selectedProject === proj.name
-                      ? 'bg-primary text-white border-primary shadow-sm font-bold'
-                      : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      ? 'bg-primary text-white border-primary shadow-md'
+                      : 'bg-card/70 border-border text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {proj.name}
@@ -642,34 +1044,34 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
               {/* Left Column: Interactive Bullet Editor */}
               <div className="lg:col-span-7 space-y-4">
                 {/* Original Bullet Reference */}
-                <div className="p-3.5 rounded-xl bg-card border border-border space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
-                    <span className="font-semibold text-foreground">Current Baseline Bullet on Resume:</span>
+                <div className="bento-card p-4 sm:p-5 rounded-3xl space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono-numbers">
+                    <span className="font-display font-semibold text-foreground">Current Baseline Bullet on Resume:</span>
                     <button
                       type="button"
                       onClick={() => {
                         setEditableBulletText(originalBulletText);
                         handleSimulateBullet(originalBulletText);
                       }}
-                      className="text-primary hover:underline flex items-center gap-1"
+                      className="text-primary hover:underline flex items-center gap-1 font-semibold"
                     >
                       <Copy className="w-3 h-3" />
                       <span>Reset to Baseline</span>
                     </button>
                   </div>
-                  <p className="text-muted-foreground italic bg-background/80 p-2.5 rounded-lg border border-border text-xs leading-relaxed font-mono">
+                  <p className="text-muted-foreground italic bg-card/60 p-3 rounded-2xl border border-border/50 text-xs leading-relaxed font-mono-numbers">
                     "{originalBulletText}"
                   </p>
                 </div>
 
                 {/* Editable Bullet Workspace */}
-                <div className="p-4 rounded-xl bg-card border border-border space-y-3">
+                <div className="bento-card p-5 sm:p-6 rounded-3xl space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-foreground text-xs flex items-center gap-1.5">
+                    <span className="font-display font-bold text-foreground text-xs flex items-center gap-1.5">
                       <Edit3 className="w-3.5 h-3.5 text-primary" />
                       <span>Live Bullet Editor</span>
                     </span>
-                    <span className="text-[11px] font-mono text-muted-foreground">
+                    <span className="text-[11px] font-mono-numbers text-muted-foreground">
                       {editableBulletText.split(/\s+/).filter(Boolean).length} words • {editableBulletText.length} chars
                     </span>
                   </div>
@@ -677,17 +1079,14 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                   <textarea
                     rows={4}
                     value={editableBulletText}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setEditableBulletText(val);
-                    }}
+                    onChange={(e) => setEditableBulletText(e.target.value)}
                     placeholder="Type or refine your bullet..."
-                    className="w-full p-3 rounded-xl bg-background border border-border text-foreground text-xs leading-relaxed focus:outline-none focus:border-primary/60 font-mono transition-all resize-y"
+                    className="w-full p-3.5 rounded-2xl bg-background/80 border border-border text-foreground text-xs leading-relaxed focus:outline-none focus:border-primary/60 font-mono-numbers transition-all resize-y"
                   />
 
                   {/* Quick-Insert Engineering Metric Chips */}
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                  <div className="space-y-2">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block font-mono-numbers">
                       Quick-Insert High-Impact Metrics & Skills:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -710,7 +1109,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                             setEditableBulletText(newText);
                             handleSimulateBullet(newText);
                           }}
-                          className="px-2 py-0.5 rounded-md bg-muted hover:bg-primary/20 text-muted-foreground hover:text-primary text-[10px] font-mono border border-border transition-all"
+                          className="btn-tactile px-2.5 py-1 rounded-xl bg-card/60 hover:bg-primary/20 text-muted-foreground hover:text-primary text-[10px] font-mono-numbers border border-border/60 transition-all"
                         >
                           + {chip}
                         </button>
@@ -719,26 +1118,28 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <button
-                      type="button"
-                      disabled={isSimulating}
+                  <div className="flex items-center justify-between pt-3 border-t border-border/40">
+                    <ColorfulButton
+                      variant="coral"
+                      size="sm"
+                      icon={Zap}
+                      loading={isSimulating}
+                      loadingText="Simulating..."
                       onClick={() => handleSimulateBullet()}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all shadow-sm"
                     >
-                      {isSimulating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                      <span>Simulate ATS Impact</span>
-                    </button>
+                      Simulate ATS Impact
+                    </ColorfulButton>
 
-                    <button
-                      type="button"
-                      disabled={isSavingBullet}
+                    <ColorfulButton
+                      variant="violet"
+                      size="sm"
+                      icon={Save}
+                      loading={isSavingBullet}
+                      loadingText="Saving..."
                       onClick={handleSaveBullet}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold transition-all shadow-sm"
                     >
-                      {isSavingBullet ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" /> : <Save className="w-3.5 h-3.5 text-primary" />}
-                      <span>Save to Resume Profile</span>
-                    </button>
+                      Save to Resume Profile
+                    </ColorfulButton>
                   </div>
                 </div>
               </div>
@@ -746,26 +1147,26 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
               {/* Right Column: Real-Time ATS Simulation & Quality Diagnosis */}
               <div className="lg:col-span-5 space-y-4">
                 {/* Score Comparison Widget */}
-                <div className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-3 relative overflow-hidden">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block font-mono">
+                <div className="bento-card p-5 sm:p-6 rounded-3xl space-y-3.5 relative overflow-hidden">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block font-mono-numbers">
                     Deterministic ATS Match Simulation (FR-08)
                   </span>
 
                   <div className="grid grid-cols-2 gap-3 pt-1">
-                    <div className="p-3 rounded-lg bg-background border border-border text-center space-y-0.5">
+                    <div className="p-3.5 rounded-2xl bg-card/60 border border-border/60 text-center space-y-0.5">
                       <span className="text-[10px] text-muted-foreground uppercase font-semibold">Baseline</span>
-                      <div className="text-xl font-bold font-mono text-muted-foreground">
+                      <div className="text-2xl font-extrabold font-mono-numbers text-muted-foreground">
                         {matchScore}%
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-lg bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-primary/30 text-center space-y-0.5 relative">
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-primary/40 text-center space-y-0.5 relative">
                       <span className="text-[10px] text-primary uppercase font-bold">Simulated</span>
-                      <div className="text-xl font-extrabold font-mono text-foreground">
+                      <div className="text-2xl font-black font-mono-numbers text-foreground">
                         {simulationResult ? simulationResult.simulated_match_score : matchScore}%
                       </div>
                       {simulationResult && simulationResult.score_delta > 0 && (
-                        <span className="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-sm font-mono animate-bounce">
+                        <span className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-slate-950 shadow-md font-mono-numbers animate-bounce">
                           +{simulationResult.score_delta}%
                         </span>
                       )}
@@ -773,12 +1174,12 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                   </div>
 
                   {simulationResult && simulationResult.score_delta > 0 ? (
-                    <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2 text-xs text-emerald-400">
+                    <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2.5 text-xs text-emerald-400">
                       <CheckCircle2 className="w-4 h-4 shrink-0" />
                       <span>This phrasing unlocks <strong>+{simulationResult.score_delta}%</strong> in your ATS score!</span>
                     </div>
                   ) : (
-                    <div className="p-2.5 rounded-lg bg-muted border border-border text-xs text-muted-foreground">
+                    <div className="p-3 rounded-2xl bg-card/60 border border-border/60 text-xs text-muted-foreground">
                       Phrasing matches current baseline. Add target JD skills or metrics to simulate an increase.
                     </div>
                   )}
@@ -786,7 +1187,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
 
                 {/* Newly Matched Skills Checklist */}
                 {simulationResult?.newly_matched_skills?.length > 0 && (
-                  <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 shadow-sm space-y-2">
+                  <div className="bento-card p-5 rounded-3xl border-emerald-500/25 bg-emerald-500/5 space-y-2.5">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
                       <CheckCircle2 className="w-4 h-4" />
                       <span>Newly Verified JD Requirements:</span>
@@ -795,10 +1196,10 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                       {simulationResult.newly_matched_skills.map((s, sIdx) => (
                         <div
                           key={sIdx}
-                          className="p-2 rounded-lg bg-card border border-border flex items-center justify-between text-xs"
+                          className="p-2.5 rounded-xl bg-card/80 border border-border/60 flex items-center justify-between text-xs"
                         >
-                          <span className="font-bold text-foreground">{s.skill_name}</span>
-                          <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+                          <span className="font-display font-bold text-foreground">{s.skill_name}</span>
+                          <span className="font-mono-numbers text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/20">
                             +{s.added_points} pts
                           </span>
                         </div>
@@ -809,11 +1210,11 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
 
                 {/* Executive SDE Bullet Quality Diagnosis */}
                 {simulationResult?.bullet_quality && (
-                  <div className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-3 text-xs">
+                  <div className="bento-card p-5 rounded-3xl space-y-3.5 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-foreground">Bullet Quality Diagnosis</span>
+                      <span className="font-display font-bold text-foreground">Bullet Quality Diagnosis</span>
                       <span
-                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                        className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${
                           simulationResult.bullet_quality.grade === 'executive_sde'
                             ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                             : simulationResult.bullet_quality.grade === 'strong'
@@ -826,13 +1227,13 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div className="p-2 rounded bg-background border border-border flex items-center gap-1.5">
+                      <div className="p-2 rounded-xl bg-card/60 border border-border/60 flex items-center gap-1.5">
                         <span className={simulationResult.bullet_quality.has_action_verb ? 'text-emerald-400 font-bold' : 'text-muted-foreground'}>
                           {simulationResult.bullet_quality.has_action_verb ? '✓' : '○'}
                         </span>
                         <span>Active Action Verb</span>
                       </div>
-                      <div className="p-2 rounded bg-background border border-border flex items-center gap-1.5">
+                      <div className="p-2 rounded-xl bg-card/60 border border-border/60 flex items-center gap-1.5">
                         <span className={simulationResult.bullet_quality.has_quantified_metric ? 'text-emerald-400 font-bold' : 'text-muted-foreground'}>
                           {simulationResult.bullet_quality.has_quantified_metric ? '✓' : '○'}
                         </span>
@@ -841,7 +1242,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                     </div>
 
                     {simulationResult.bullet_quality.feedback && (
-                      <p className="text-muted-foreground text-[11px] bg-background/80 p-2.5 rounded-lg border border-border leading-relaxed">
+                      <p className="text-muted-foreground text-[11px] bg-card/50 p-3 rounded-2xl border border-border/50 leading-relaxed font-mono-numbers">
                         {simulationResult.bullet_quality.feedback}
                       </p>
                     )}
@@ -852,33 +1253,37 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
           </div>
         )}
 
-        {/* 4. INTERVIEW PREP TAB */}
+        {/* ======================================================================= */}
+        {/* 4. INTERVIEW PREP TAB                                                  */}
+        {/* ======================================================================= */}
         {activeTab === 'interview' && (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2">
+          <div className="space-y-5">
+            <div className="bento-card p-5 sm:p-6 rounded-3xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h3 className="font-bold text-foreground text-base">Role-Specific Interview Questions</h3>
-                <p className="text-xs text-muted-foreground">
+                <h3 className="font-display font-bold text-foreground text-base">
+                  Role-Specific Interview Questions
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Grounded strictly in your resume projects and target role requirements.
                 </p>
               </div>
-              <button
+
+              <ColorfulButton
+                variant="glass"
+                size="md"
+                icon={Sparkles}
+                loading={loadingQuestions}
+                loadingText="Regenerating..."
                 onClick={() => loadInterviewQuestions(true)}
-                disabled={loadingQuestions}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-all"
               >
-                {loadingQuestions ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-primary" />}
-                <span>Regenerate Questions</span>
-              </button>
+                Regenerate Questions
+              </ColorfulButton>
             </div>
 
-            {loadingQuestions ? (
-              <div className="p-12 text-center text-muted-foreground space-y-3">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-                <p className="text-xs">Synthesizing role-specific interview questions...</p>
-              </div>
+            {loadingQuestions || skeletonSimulator ? (
+              <SkeletonCardGrid count={4} />
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {filteredQuestions.map((q, idx) => {
                   const isExp = expandedQuestion === idx;
                   const isPracticing = practicingIdx === idx;
@@ -888,45 +1293,46 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                   const wordCount = currentAnswer.trim() ? currentAnswer.trim().split(/\s+/).length : 0;
 
                   return (
-                    <div key={idx} className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-3 hover:border-slate-700 transition-all">
+                    <div
+                      key={idx}
+                      className="bento-card p-5 rounded-3xl space-y-3.5 transition-all"
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div
                           onClick={() => setExpandedQuestion(isExp ? null : idx)}
-                          className="space-y-1 cursor-pointer select-none flex-1"
+                          className="space-y-1.5 cursor-pointer select-none flex-1"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase bg-primary/10 text-primary border border-primary/20">
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase bg-primary/10 text-primary border border-primary/20">
                               {q.category.replace('_', ' ')}
                             </span>
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded uppercase bg-muted text-muted-foreground font-mono">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase bg-muted text-muted-foreground font-mono-numbers">
                               {q.difficulty}
                             </span>
                           </div>
-                          <h4 className="font-semibold text-sm text-foreground pt-1">{q.question}</h4>
+                          <h4 className="font-display font-semibold text-sm text-foreground pt-0.5">
+                            {q.question}
+                          </h4>
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
+                          <ColorfulButton
+                            variant={isPracticing ? 'violet' : 'cobalt'}
+                            size="sm"
+                            icon={Mic}
                             onClick={(e) => {
                               e.stopPropagation();
                               setPracticingIdx(isPracticing ? null : idx);
                               if (!isExp) setExpandedQuestion(idx);
                             }}
-                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
-                              isPracticing
-                                ? 'bg-primary text-white border-primary shadow-sm'
-                                : 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/20'
-                            }`}
                           >
-                            <Mic className="w-3.5 h-3.5" />
-                            <span>{isPracticing ? 'Hide Practice' : 'Practice Answer'}</span>
-                          </button>
+                            {isPracticing ? 'Hide Practice' : 'Practice Answer'}
+                          </ColorfulButton>
 
                           <button
                             type="button"
                             onClick={() => setExpandedQuestion(isExp ? null : idx)}
-                            className="p-1 rounded text-muted-foreground hover:text-foreground"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground"
                           >
                             {isExp ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
@@ -934,32 +1340,32 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                       </div>
 
                       {isExp && (
-                        <div className="mt-3 pt-3 border-t border-border space-y-3 text-xs">
+                        <div className="mt-3 pt-3 border-t border-border/40 space-y-3 text-xs">
                           {q.why_relevant && (
                             <p className="text-muted-foreground">
-                              <span className="font-semibold text-foreground">Why It Matters: </span>
+                              <span className="font-display font-semibold text-foreground">Why It Matters: </span>
                               {q.why_relevant}
                             </p>
                           )}
                           {q.answer_outline && (
-                            <div className="p-3 rounded-xl bg-background/80 border border-border text-foreground space-y-1">
-                              <span className="font-semibold text-primary block">Suggested Answer Outline:</span>
+                            <div className="p-3.5 rounded-2xl bg-card/60 border border-border/50 text-foreground space-y-1">
+                              <span className="font-display font-semibold text-primary block">Suggested Answer Outline:</span>
                               <p className="text-muted-foreground leading-relaxed">{q.answer_outline}</p>
                             </div>
                           )}
 
                           {/* Interactive Practice Box */}
                           {isPracticing && (
-                            <div className="p-4 rounded-xl bg-background/90 border border-primary/30 space-y-3 mt-3">
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2.5">
+                            <div className="p-5 rounded-3xl bg-card/70 border border-primary/40 space-y-3.5 mt-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border/40 pb-2.5">
                                 <div className="flex items-center gap-2">
                                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                                  <span className="font-bold text-foreground text-xs uppercase tracking-wide">
+                                  <span className="font-display font-bold text-foreground text-xs uppercase tracking-wide">
                                     AI Mock Interview Practice Studio
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
-                                  <span>STAR Framework Guide:</span>
+                                <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono-numbers">
+                                  <span>STAR Guide:</span>
                                   <span className="px-1.5 py-0.5 rounded bg-muted text-foreground">S</span>
                                   <span className="px-1.5 py-0.5 rounded bg-muted text-foreground">T</span>
                                   <span className="px-1.5 py-0.5 rounded bg-muted text-foreground">A</span>
@@ -969,26 +1375,26 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
 
                               {/* STAR Guidance Hints */}
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
-                                <div className="p-1.5 rounded bg-card border border-border">
-                                  <strong className="text-indigo-400 block font-mono">S • Situation</strong>
+                                <div className="p-2 rounded-xl bg-card/50 border border-border/40">
+                                  <strong className="text-indigo-400 block font-mono-numbers">S • Situation</strong>
                                   <span className="text-muted-foreground">Context & project background</span>
                                 </div>
-                                <div className="p-1.5 rounded bg-card border border-border">
-                                  <strong className="text-cyan-400 block font-mono">T • Task</strong>
+                                <div className="p-2 rounded-xl bg-card/50 border border-border/40">
+                                  <strong className="text-cyan-400 block font-mono-numbers">T • Task</strong>
                                   <span className="text-muted-foreground">Engineering goal or problem</span>
                                 </div>
-                                <div className="p-1.5 rounded bg-card border border-border">
-                                  <strong className="text-emerald-400 block font-mono">A • Action</strong>
+                                <div className="p-2 rounded-xl bg-card/50 border border-border/40">
+                                  <strong className="text-emerald-400 block font-mono-numbers">A • Action</strong>
                                   <span className="text-muted-foreground">Architecture & tools used</span>
                                 </div>
-                                <div className="p-1.5 rounded bg-card border border-border">
-                                  <strong className="text-amber-400 block font-mono">R • Result</strong>
+                                <div className="p-2 rounded-xl bg-card/50 border border-border/40">
+                                  <strong className="text-amber-400 block font-mono-numbers">R • Result</strong>
                                   <span className="text-muted-foreground">Quantified metrics & latency</span>
                                 </div>
                               </div>
 
                               {/* Candidate Input Textarea */}
-                              <div className="space-y-1.5">
+                              <div className="space-y-2">
                                 <textarea
                                   rows={4}
                                   value={currentAnswer}
@@ -997,9 +1403,9 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                                     setCandidateAnswers((prev) => ({ ...prev, [idx]: val }));
                                   }}
                                   placeholder="Type your interview response using the STAR method... e.g. In my project (Situation), our objective was to prevent race conditions during checkout (Task). I implemented MongoDB ACID transactions with optimistic locking (Action), which eliminated duplicate orders and cut latency to under 80ms (Result)..."
-                                  className="w-full p-3 rounded-xl bg-card border border-border text-foreground text-xs leading-relaxed focus:outline-none focus:border-primary/60 font-mono transition-all resize-y"
+                                  className="w-full p-3.5 rounded-2xl bg-background/80 border border-border text-foreground text-xs leading-relaxed focus:outline-none focus:border-primary/60 font-mono-numbers transition-all resize-y"
                                 />
-                                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+                                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono-numbers">
                                   <span>{wordCount} words {wordCount < 15 && <span className="text-amber-400 italic">(aim for 40+ words)</span>}</span>
                                   <div className="flex items-center gap-2">
                                     {currentAnswer && (
@@ -1018,43 +1424,38 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                                         Clear
                                       </button>
                                     )}
-                                    <button
-                                      type="button"
-                                      disabled={isEvaluating || !currentAnswer.trim()}
+                                    <ColorfulButton
+                                      variant="prism"
+                                      size="sm"
+                                      icon={Sparkles}
+                                      disabled={!currentAnswer.trim()}
+                                      loading={isEvaluating}
+                                      loadingText="Grading..."
                                       onClick={() => handleEvaluateAnswer(idx, q)}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all shadow-sm"
                                     >
-                                      {isEvaluating ? (
-                                        <>
-                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                          <span>Grading Answer...</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Sparkles className="w-3.5 h-3.5" />
-                                          <span>Submit for AI Evaluation</span>
-                                        </>
-                                      )}
-                                    </button>
+                                      Submit for AI Evaluation
+                                    </ColorfulButton>
                                   </div>
                                 </div>
                               </div>
 
                               {/* AI Evaluation Results Panel */}
                               {evalResult && (
-                                <div className="mt-4 pt-4 border-t border-border space-y-3.5 animate-fadeIn">
+                                <div className="mt-4 pt-4 border-t border-border/40 space-y-3.5">
                                   {/* Score Header */}
-                                  <div className="p-3.5 rounded-xl border border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                  <div className="p-4 rounded-2xl border border-border/60 bg-card/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <div className="space-y-0.5">
                                       <div className="flex items-center gap-2">
                                         <Award className="w-4 h-4 text-primary" />
-                                        <span className="font-bold text-foreground text-xs">Overall Performance Rating</span>
+                                        <span className="font-display font-bold text-foreground text-xs">
+                                          Overall Performance Rating
+                                        </span>
                                       </div>
                                       <p className="text-muted-foreground text-[11px]">{evalResult.summary}</p>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                       <span
-                                        className={`px-3 py-1 rounded-full text-xs font-bold font-mono border ${
+                                        className={`px-3 py-1 rounded-full text-xs font-bold font-mono-numbers border ${
                                           evalResult.overall_score >= 7.5
                                             ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                                             : evalResult.overall_score >= 5.5
@@ -1073,14 +1474,14 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                                       {Object.entries(evalResult.star_analysis).map(([key, item]) => (
                                         <div
                                           key={key}
-                                          className={`p-2.5 rounded-lg border ${
+                                          className={`p-3 rounded-2xl border ${
                                             item.detected
                                               ? 'bg-emerald-500/5 border-emerald-500/20'
                                               : 'bg-amber-500/5 border-amber-500/20'
                                           }`}
                                         >
                                           <div className="flex items-center justify-between mb-1">
-                                            <span className="font-bold uppercase tracking-wider text-[10px] text-foreground font-mono">
+                                            <span className="font-display font-bold uppercase tracking-wider text-[10px] text-foreground font-mono-numbers">
                                               {key}
                                             </span>
                                             <span
@@ -1101,8 +1502,8 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                                   {evalResult.technical_depth && (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                                       {evalResult.technical_depth.strengths?.length > 0 && (
-                                        <div className="p-2.5 rounded-lg bg-card border border-border space-y-1">
-                                          <span className="font-bold text-emerald-400 text-[10px] uppercase block">
+                                        <div className="p-3 rounded-2xl bg-card/60 border border-border/50 space-y-1">
+                                          <span className="font-display font-bold text-emerald-400 text-[10px] uppercase block">
                                             Key Strengths Detected:
                                           </span>
                                           <ul className="space-y-1 text-muted-foreground text-[11px]">
@@ -1117,8 +1518,8 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
                                       )}
 
                                       {evalResult.technical_depth.missing_concepts?.length > 0 && (
-                                        <div className="p-2.5 rounded-lg bg-card border border-border space-y-1">
-                                          <span className="font-bold text-amber-400 text-[10px] uppercase block">
+                                        <div className="p-3 rounded-2xl bg-card/60 border border-border/50 space-y-1">
+                                          <span className="font-display font-bold text-amber-400 text-[10px] uppercase block">
                                             Recommended Improvements:
                                           </span>
                                           <ul className="space-y-1 text-muted-foreground text-[11px]">
@@ -1136,12 +1537,12 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
 
                                   {/* Senior SDE Model Phrasing */}
                                   {evalResult.improved_model_answer && (
-                                    <div className="p-3.5 rounded-xl bg-card border border-border space-y-1.5">
+                                    <div className="p-4 rounded-2xl bg-card/60 border border-border/50 space-y-1.5">
                                       <div className="flex items-center gap-1.5">
                                         <Award className="w-3.5 h-3.5 text-primary" />
-                                        <strong className="text-foreground text-xs">Senior SDE Model Phrasing:</strong>
+                                        <strong className="font-display text-foreground text-xs">Senior SDE Model Phrasing:</strong>
                                       </div>
-                                      <p className="text-muted-foreground italic bg-background/80 p-2.5 rounded-lg border border-border leading-relaxed text-[11px]">
+                                      <p className="text-muted-foreground italic bg-background/80 p-3 rounded-xl border border-border/50 leading-relaxed text-[11px]">
                                         "{evalResult.improved_model_answer}"
                                       </p>
                                     </div>
@@ -1149,10 +1550,10 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
 
                                   {/* Coaching Tip */}
                                   {evalResult.coaching_tip && (
-                                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2 text-xs">
+                                    <div className="p-3 rounded-2xl bg-primary/5 border border-primary/20 flex items-start gap-2 text-xs">
                                       <Lightbulb className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                       <div>
-                                        <strong className="text-foreground block text-[11px]">Interview Coach Tip:</strong>
+                                        <strong className="font-display text-foreground block text-[11px]">Interview Coach Tip:</strong>
                                         <p className="text-muted-foreground text-[11px] mt-0.5">{evalResult.coaching_tip}</p>
                                       </div>
                                     </div>
@@ -1171,115 +1572,118 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
           </div>
         )}
 
-        {/* 4. LEARNING ROADMAP TAB */}
+        {/* ======================================================================= */}
+        {/* 5. LEARNING ROADMAP TAB                                                */}
+        {/* ======================================================================= */}
         {activeTab === 'roadmap' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between pb-2">
+          <div className="space-y-5">
+            <div className="bento-card p-5 sm:p-6 rounded-3xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h3 className="font-bold text-foreground text-base">Dependency-Ordered Learning Roadmap</h3>
-                <p className="text-xs text-muted-foreground">
+                <h3 className="font-display font-bold text-foreground text-base">
+                  Dependency-Ordered Learning Roadmap
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Ranked sequence of skill additions designed to systematically address your highest-priority gaps.
                 </p>
               </div>
-              <button
+
+              <ColorfulButton
+                variant="glass"
+                size="md"
+                icon={Sparkles}
+                loading={loadingRoadmap}
+                loadingText="Regenerating..."
                 onClick={() => loadRoadmap(true)}
-                disabled={loadingRoadmap}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition-all"
               >
-                {loadingRoadmap ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-primary" />}
-                <span>Regenerate Roadmap</span>
-              </button>
+                Regenerate Roadmap
+              </ColorfulButton>
             </div>
 
-          {loadingRoadmap ? (
-            <div className="p-12 text-center text-muted-foreground space-y-3">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-              <p className="text-xs">Generating progressive learning milestones...</p>
-            </div>
-          ) : (
-            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-border">
-              {roadmap.map((step, idx) => (
-                <div key={idx} className="relative group">
-                  <div className="absolute -left-6 top-1 w-5 h-5 rounded-full bg-card border-2 border-primary flex items-center justify-center text-[10px] font-bold text-primary shadow-sm font-mono">
-                    {step.step_number || idx + 1}
-                  </div>
-                  <div className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-2 hover:border-slate-700 transition-all">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-foreground text-sm">{step.skill_name}</h4>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        {step.priority} Priority
-                      </span>
+            {loadingRoadmap || skeletonSimulator ? (
+              <SkeletonCardGrid count={4} />
+            ) : (
+              <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-border/60">
+                {roadmap.map((step, idx) => (
+                  <div key={idx} className="relative group">
+                    <div className="absolute -left-6 top-1 w-5 h-5 rounded-full bg-card border-2 border-primary flex items-center justify-center text-[10px] font-extrabold text-primary shadow-sm font-mono-numbers">
+                      {step.step_number || idx + 1}
                     </div>
-                    <p className="text-xs text-muted-foreground">{step.reason}</p>
-                    <div className="p-3 rounded-lg bg-background/80 border border-border text-xs space-y-1">
-                      <span className="font-semibold text-primary">Practice Task:</span>
-                      <p className="text-muted-foreground">{step.practice_task}</p>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground flex items-center justify-between pt-1">
-                      <span>Outcome: {step.expected_outcome}</span>
-                      <span className="italic font-mono">{step.estimated_effort}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 5. RESUME SUGGESTIONS TAB */}
-      {activeTab === 'suggestions' && (
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-bold text-foreground text-base">Honest Resume Suggestions</h3>
-            <p className="text-xs text-muted-foreground">
-              Categorized recommendations designed to sharpen your resume without fabricating unearned experience.
-            </p>
-          </div>
-
-          {loadingSuggestions ? (
-            <div className="p-12 text-center text-muted-foreground space-y-3">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-              <p className="text-xs">Analyzing resume wording and gaps...</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {suggestions.map((s, idx) => {
-                const isWording = s.category === 'improve_wording';
-                const isHighlight = s.category === 'highlight_existing_skill';
-                return (
-                  <div key={idx} className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-2.5 hover:border-slate-700 transition-all">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider ${
-                          isWording
-                            ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 shadow-[0_0_10px_rgba(99,102,241,0.15)]'
-                            : isHighlight
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
-                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/25 shadow-[0_0_10px_rgba(245,158,11,0.15)]'
-                        }`}
-                      >
-                        {s.category.replace(/_/g, ' ')}
-                      </span>
-                      <span className="text-xs font-bold text-foreground">{s.target_skill}</span>
-                    </div>
-
-                    {s.target_quote && (
-                      <div className="relative p-3 rounded-lg bg-background/80 border border-border border-l-2 border-l-primary font-mono text-xs text-muted-foreground">
-                        <span className="text-primary font-bold mr-1">"</span>
-                        <span>{s.target_quote}</span>
-                        <span className="text-primary font-bold ml-1">"</span>
+                    <div className="bento-card p-5 rounded-3xl space-y-2.5 transition-all">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-display font-bold text-foreground text-sm">{step.skill_name}</h4>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono-numbers font-bold uppercase bg-amber-500/15 text-amber-400 border border-amber-500/25">
+                          {step.priority} Priority
+                        </span>
                       </div>
-                    )}
-
-                    <p className="text-xs text-foreground font-medium leading-relaxed">{s.suggestion}</p>
+                      <p className="text-xs text-muted-foreground">{step.reason}</p>
+                      <div className="p-3.5 rounded-2xl bg-card/60 border border-border/50 text-xs space-y-1">
+                        <span className="font-display font-semibold text-primary">Practice Task:</span>
+                        <p className="text-muted-foreground">{step.practice_task}</p>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground flex items-center justify-between pt-1">
+                        <span>Outcome: {step.expected_outcome}</span>
+                        <span className="italic font-mono-numbers">{step.estimated_effort}</span>
+                      </div>
+                    </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ======================================================================= */}
+        {/* 6. RESUME SUGGESTIONS TAB                                              */}
+        {/* ======================================================================= */}
+        {activeTab === 'suggestions' && (
+          <div className="space-y-5">
+            <div className="bento-card p-5 sm:p-6 rounded-3xl">
+              <h3 className="font-display font-bold text-foreground text-base">Honest Resume Suggestions</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Categorized recommendations designed to sharpen your resume without fabricating unearned experience.
+              </p>
             </div>
-          )}
-        </div>
-      )}
+
+            {loadingSuggestions || skeletonSimulator ? (
+              <SkeletonCardGrid count={3} />
+            ) : (
+              <div className="grid grid-cols-1 gap-3.5">
+                {suggestions.map((s, idx) => {
+                  const isWording = s.category === 'improve_wording';
+                  const isHighlight = s.category === 'highlight_existing_skill';
+                  return (
+                    <div key={idx} className="bento-card p-5 rounded-3xl space-y-2.5 transition-all">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono-numbers ${
+                            isWording
+                              ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
+                              : isHighlight
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                              : 'bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+                          }`}
+                        >
+                          {s.category.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-xs font-display font-bold text-foreground">{s.target_skill}</span>
+                      </div>
+
+                      {s.target_quote && (
+                        <div className="relative p-3.5 rounded-2xl bg-card/60 border border-border/50 border-l-2 border-l-primary font-mono-numbers text-xs text-muted-foreground">
+                          <span className="text-primary font-bold mr-1">"</span>
+                          <span>{s.target_quote}</span>
+                          <span className="text-primary font-bold ml-1">"</span>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-foreground font-medium leading-relaxed">{s.suggestion}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

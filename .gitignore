@@ -40,3 +40,8 @@ supabase/.temp/
 .idea/
 *.swp
 *.swo
+
+# PDF Documents and Interview Guide Generator
+*.pdf
+generate_interview_guide.py
+*generation_interviewguide*

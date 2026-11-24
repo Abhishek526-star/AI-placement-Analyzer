@@ -11,8 +11,25 @@ import {
 import {
   FileText, Target, AlertCircle, ArrowUpRight, ArrowRight, CheckCircle2,
   Clock, Sparkles, ShieldCheck, Database, Lock, Activity,
-  TrendingUp, Award, Layers
+  TrendingUp, Award, Layers, Briefcase
 } from 'lucide-react';
+
+function formatRelativeTime(dateString) {
+  if (!dateString) return 'Recent';
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  } catch {
+    return 'Recent';
+  }
+}
 
 export function DashboardPage({ onNavigate, onOpenAnalysis }) {
   const { user } = useAuth();
@@ -1007,55 +1024,94 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left 8 Cols: Recent Analyses */}
         <div className="lg:col-span-8 bento-card p-6 rounded-3xl space-y-4">
-          <div className="flex items-center justify-between border-b border-border/40 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-3">
             <div>
-              <h2 className="font-display font-bold text-base text-foreground tracking-tight">
-                Recent Application Analyses
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Click any analysis to open full match report, interview prep, and roadmap.
+              <div className="flex items-center gap-2">
+                <h2 className="font-display font-bold text-base text-foreground tracking-tight">
+                  Recent Application Analyses
+                </h2>
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Click any benchmark analysis to review match breakdown, interview prep, and roadmap.
               </p>
             </div>
             <button
               onClick={() => onNavigate('history')}
-              className="text-xs font-mono font-semibold text-primary hover:underline flex items-center gap-1"
+              className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono font-semibold text-primary flex items-center gap-1.5 transition-all select-none self-start sm:self-auto"
             >
-              <span>View All</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>View Full History</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {showSkeletons ? (
             <SkeletonCardGrid count={3} />
           ) : summary?.recent_analyses?.length > 0 ? (
-            <div className="space-y-2.5">
-              {summary.recent_analyses.map((analysis) => (
-                <div
-                  key={analysis.id}
-                  onClick={() => onOpenAnalysis ? onOpenAnalysis(analysis.id) : onNavigate('history')}
-                  className="p-4 rounded-2xl bg-card/60 border border-border hover:border-primary/40 hover:bg-card transition-all cursor-pointer flex items-center justify-between group"
-                >
-                  <div className="space-y-0.5">
-                    <h4 className="font-display font-bold text-foreground text-sm group-hover:text-primary transition-colors">
-                      {analysis.title}
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {analysis.company || 'Enterprise Placement'} • Deterministic Match
-                    </p>
+            <div className="divide-y divide-white/5 rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden">
+              {summary.recent_analyses.map((analysis) => {
+                const score = Math.round(Number(analysis.match_score) || 0);
+                return (
+                  <div
+                    key={analysis.id}
+                    onClick={() => onOpenAnalysis ? onOpenAnalysis(analysis.id) : onNavigate('history')}
+                    className="p-3.5 sm:p-4 flex items-center justify-between gap-4 hover:bg-white/[0.05] transition-all cursor-pointer group select-none"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      {/* Role Avatar Squircle */}
+                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border transition-transform group-hover:scale-105 shadow-md ${
+                        score >= 80
+                          ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-emerald-500/10'
+                          : score >= 60
+                          ? 'bg-sky-500/15 border-sky-500/30 text-sky-400 shadow-sky-500/10'
+                          : 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-amber-500/10'
+                      }`}>
+                        <Briefcase className="w-4 h-4" />
+                      </div>
+
+                      {/* Title & Metadata */}
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-display font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                            {analysis.title}
+                          </h4>
+                          {score >= 80 && (
+                            <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 shrink-0">
+                              Optimal Fit
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono truncate">
+                          <span>{analysis.company || 'Enterprise Placement'}</span>
+                          <span className="text-white/20">•</span>
+                          <span className="text-slate-400">Deterministic Match</span>
+                          <span className="text-white/20">•</span>
+                          <span className="text-slate-400">{formatRelativeTime(analysis.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Score Pill & Tactical Arrow */}
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <div className={`px-3 py-1 rounded-xl font-mono-numbers font-bold text-xs sm:text-sm border shadow-sm ${
+                        score >= 80
+                          ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                          : score >= 60
+                          ? 'bg-sky-500/15 border-sky-500/30 text-sky-300'
+                          : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                      }`}>
+                        {score}%
+                      </div>
+                      <div className="w-8 h-8 rounded-xl bg-white/5 group-hover:bg-primary/20 border border-white/10 group-hover:border-primary/40 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-all group-hover:translate-x-0.5">
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-sm font-bold text-primary px-3 py-1 rounded-xl bg-primary/10 border border-primary/20">
-                      {analysis.match_score}%
-                    </span>
-                    <button className="p-1.5 rounded-lg text-muted-foreground group-hover:text-foreground group-hover:bg-muted transition-all">
-                      <ArrowUpRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div className="text-center py-12 border border-dashed border-border rounded-2xl space-y-3">
+            <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl space-y-3">
               <Clock className="w-10 h-10 text-muted-foreground mx-auto opacity-60" />
               <div className="space-y-1">
                 <h3 className="font-display font-bold text-foreground text-sm">No analyses completed yet</h3>
@@ -1075,43 +1131,81 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
         </div>
 
         {/* Right 4 Cols: Platform Architecture Guarantees */}
-        <div className="lg:col-span-4 bento-card p-6 rounded-3xl space-y-4">
-          <div className="border-b border-border/40 pb-3">
-            <h2 className="font-display font-bold text-base text-foreground tracking-tight">
-              Enterprise Platform Guarantees
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Production engineering design principles.
-            </p>
+        <div className="lg:col-span-4 bento-card p-6 rounded-3xl space-y-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between border-b border-border/40 pb-3">
+            <div>
+              <h2 className="font-display font-bold text-base text-foreground tracking-tight">
+                Enterprise Guarantees
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Production deterministic architecture.
+              </p>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              ● High Assurance
+            </span>
           </div>
 
-          <div className="space-y-3 text-xs">
-            <div className="p-3.5 rounded-2xl bg-card border border-border space-y-1">
-              <div className="flex items-center gap-2 font-bold text-foreground">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Deterministic Scoring (FR-08)</span>
+          <div className="divide-y divide-white/5 rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden">
+            {/* Guarantee 1 */}
+            <div className="p-3.5 space-y-1.5 hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/10">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-display font-bold text-xs text-foreground flex items-center gap-1.5">
+                    <span>Deterministic Scoring (FR-08)</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  </div>
+                  <div className="text-[10px] font-mono text-emerald-400 font-semibold">
+                    100% Math Equations • 0% Variance
+                  </div>
+                </div>
               </div>
-              <p className="text-muted-foreground text-[11px] leading-relaxed">
-                Scores are calculated strictly through mathematical weight equations, never hallucinated by an LLM prompt.
+              <p className="text-muted-foreground text-[11px] leading-relaxed pl-10">
+                Scores calculated strictly through mathematical weight equations, never hallucinated by an LLM prompt.
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-card border border-border space-y-1">
-              <div className="flex items-center gap-2 font-bold text-foreground">
-                <Database className="w-4 h-4 text-indigo-400" />
-                <span>Hybrid RAG (pgvector + FTS)</span>
+            {/* Guarantee 2 */}
+            <div className="p-3.5 space-y-1.5 hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-500/10">
+                  <Database className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-display font-bold text-xs text-foreground flex items-center gap-1.5">
+                    <span>Hybrid RAG (pgvector + FTS)</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                  </div>
+                  <div className="text-[10px] font-mono text-indigo-400 font-semibold">
+                    1536-D Vector + BM25 Exact Match
+                  </div>
+                </div>
               </div>
-              <p className="text-muted-foreground text-[11px] leading-relaxed">
+              <p className="text-muted-foreground text-[11px] leading-relaxed pl-10">
                 Reciprocal Rank Fusion pairs semantic vector embeddings with exact keyword search to eliminate false positives.
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-card border border-border space-y-1">
-              <div className="flex items-center gap-2 font-bold text-foreground">
-                <Lock className="w-4 h-4 text-cyan-400" />
-                <span>Zero Hallucination Policy (FR-12)</span>
+            {/* Guarantee 3 */}
+            <div className="p-3.5 space-y-1.5 hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0 shadow-sm shadow-cyan-500/10">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-display font-bold text-xs text-foreground flex items-center gap-1.5">
+                    <span>Zero Hallucination Policy (FR-12)</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                  </div>
+                  <div className="text-[10px] font-mono text-cyan-400 font-semibold">
+                    Verbatim Proof • Anti-Fabrication
+                  </div>
+                </div>
               </div>
-              <p className="text-muted-foreground text-[11px] leading-relaxed">
+              <p className="text-muted-foreground text-[11px] leading-relaxed pl-10">
                 Missing skills are classified as learning goals and never fabricated into fake candidate experience.
               </p>
             </div>

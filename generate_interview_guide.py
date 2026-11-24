@@ -64,6 +64,7 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
     SECONDARY = colors.HexColor("#1E293B")  # Slate 800
     ACCENT_BLUE = colors.HexColor("#0284C7")# Sky 600
     ACCENT_GREEN = colors.HexColor("#059669")# Emerald 600
+    ACCENT_PURPLE = colors.HexColor("#6366F1")# Indigo 500
     TEXT_DARK = colors.HexColor("#1E293B")
     TEXT_MUTED = colors.HexColor("#475569")
     BG_LIGHT = colors.HexColor("#F8FAFC")
@@ -94,8 +95,8 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
         'SectionH1',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=13,
-        leading=16,
+        fontSize=12,
+        leading=15,
         textColor=colors.white,
         spaceBefore=0,
         spaceAfter=0
@@ -105,50 +106,62 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
         'SectionH2',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=11,
-        leading=15,
+        fontSize=10.5,
+        leading=14,
         textColor=ACCENT_BLUE,
-        spaceBefore=8,
-        spaceAfter=3
+        spaceBefore=7,
+        spaceAfter=2
+    )
+
+    h3_style = ParagraphStyle(
+        'SectionH3',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9.5,
+        leading=13,
+        textColor=ACCENT_PURPLE,
+        spaceBefore=5,
+        spaceAfter=2
     )
 
     body_style = ParagraphStyle(
         'BodyDark',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=9,
-        leading=13,
+        fontSize=8.5,
+        leading=12,
         textColor=TEXT_DARK,
-        spaceAfter=5
+        spaceAfter=4
     )
 
     bullet_style = ParagraphStyle(
         'BulletText',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=9,
-        leading=13,
+        fontSize=8.5,
+        leading=12,
         textColor=TEXT_DARK,
         leftIndent=12,
-        spaceAfter=3
+        spaceAfter=2.5
     )
 
     q_style = ParagraphStyle(
         'QuestionStyle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=9.5,
-        leading=13.5,
+        fontSize=9,
+        leading=12.5,
         textColor=PRIMARY,
-        spaceAfter=3
+        spaceBefore=4,
+        spaceAfter=2
     )
 
     code_style = ParagraphStyle(
         'CodeStyle',
         parent=styles['Normal'],
         fontName='Courier',
-        fontSize=8,
-        leading=11,
+        fontSize=7.5,
+        leading=10,
         textColor=colors.HexColor("#0F172A")
     )
 
@@ -159,11 +172,11 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
         t = Table([[p]], colWidths=[540])
         t.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), PRIMARY),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-            ('CORNERPAD', (0,0), (-1,-1), 3),
+            ('CORNERPAD', (0,0), (-1,-1), 2),
         ]))
         return t
 
@@ -173,45 +186,44 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
         t.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), bg),
             ('LINEBEFORE', (0, 0), (0, -1), 3, border_color),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ('LEFTPADDING', (0, 0), (-1, -1), 10),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ]))
         return t
 
     # ---------------------------------------------------------
     # DOCUMENT HEADER
     # ---------------------------------------------------------
-    story.append(Paragraph("AI Placement Analyzer — Interview Preparation Master Guide", title_style))
-    story.append(Paragraph("<b>Role Calibration:</b> Full Stack Engineer / AI & Backend Systems Engineer | <b>Tech:</b> React 18, Node.js, PostgreSQL, pgvector, Gemini API", subtitle_style))
-    story.append(HRFlowable(width="100%", thickness=1, color=BORDER_LIGHT, spaceAfter=10))
+    story.append(Paragraph("AI Placement Analyzer — Master Technical Interview Guide", title_style))
+    story.append(Paragraph("<b>Target Roles:</b> Full Stack Engineer / AI Systems Engineer | <b>Stack:</b> React 18 JSX, Node.js ES Modules, Supabase PostgreSQL, pgvector, Gemini API", subtitle_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=BORDER_LIGHT, spaceAfter=8))
 
     # ---------------------------------------------------------
     # SECTION 1: ELEVATOR PITCHES
     # ---------------------------------------------------------
     story.append(make_section_banner("1. Executive Framing & Elevator Pitches"))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     story.append(Paragraph("30-Second Elevator Pitch (The Hook)", h2_style))
     story.append(make_callout(
-        "<i>\"I architected the AI Placement Analyzer—a deterministic placement calibration platform designed to solve the critical black-box and hallucination problems in existing ATS tools. Unlike commercial tools that ask LLMs to invent arbitrary match percentages, our engine uses deterministic mathematical weight equations combined with a Hybrid RAG pipeline (pgvector + BM25 keyword search via Reciprocal Rank Fusion). This delivers 100% reproducible scoring, verbatim quote validation, and automated GDPR Article 17 cascading erasure on Supabase PostgreSQL.\"</i>"
+        "<i>\"I architected the AI Placement Analyzer—a deterministic placement calibration platform designed to eliminate black-box scoring and AI hallucinations in career tech. Unlike commercial tools that ask LLMs to invent arbitrary match percentages, our engine uses deterministic mathematical weight equations combined with a Hybrid RAG pipeline (pgvector + BM25 keyword search via Reciprocal Rank Fusion). This delivers 100% reproducible scoring, verbatim quote validation, and automated GDPR Article 17 cascading erasure on Supabase PostgreSQL.\"</i>"
     ))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
-    story.append(Paragraph("2-Minute Deep Dive (Architecture & Value)", h2_style))
-    story.append(Paragraph("When an interviewer asks: <i>'Walk me through the design and what makes it technically interesting.'</i> Walk through these 4 chronological phases:", body_style))
-    story.append(Paragraph("• <b>1. Ingestion & Sanitization:</b> Resumes (PDF/DOCX) pass through magic byte inspection and section parsing. Candidate skills are extracted and normalized through an alias dictionary to prevent false positives (e.g., strictly isolating <code>Java</code> from <code>JavaScript</code>).", bullet_style))
-    story.append(Paragraph("• <b>2. Hybrid RAG Retrieval (RPC):</b> We pair dense 1536-D Gemini embeddings with PostgreSQL full-text search. Reciprocal Rank Fusion programmatically ranks chunks to balance semantic intent with exact keyword syntax.", bullet_style))
+    story.append(Paragraph("2-Minute Deep Dive (Architecture Walkthrough)", h2_style))
+    story.append(Paragraph("• <b>1. Ingestion & Sanitization:</b> Resumes pass through magic byte inspection and section parsing. Candidate skills are extracted and normalized via an alias map, preventing false positives (e.g. isolating <code>Java</code> from <code>JavaScript</code>).", bullet_style))
+    story.append(Paragraph("• <b>2. Hybrid RAG Retrieval (RPC):</b> We pair dense 1536-D Gemini embeddings with PostgreSQL full-text search. Reciprocal Rank Fusion ranks chunks to balance semantic intent with exact keyword syntax.", bullet_style))
     story.append(Paragraph("• <b>3. Deterministic Scoring Lock (FR-08):</b> The LLM is strictly isolated to synthesis. Numerical scores are computed via mathematical equations in backend code, ensuring 0% prompt variance.", bullet_style))
     story.append(Paragraph("• <b>4. High-Assurance Cockpit & Multi-Tenancy:</b> A responsive React 18 Bento UI connects with Supabase Row-Level Security (RLS), providing cryptographic multi-tenant isolation and one-click data purge cascades.", bullet_style))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # ---------------------------------------------------------
     # SECTION 2: CORE ARCHITECTURAL DECISIONS (ADRs)
     # ---------------------------------------------------------
     story.append(make_section_banner("2. Key Architectural Decisions (ADRs) Deep Dive"))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     story.append(Paragraph("ADR-01: Deterministic Match Score Lock vs. Generative Scoring", h2_style))
     story.append(Paragraph("<b>The Problem:</b> Prompting an LLM (e.g., 'Score this candidate from 1 to 100') is fundamentally non-deterministic. The same candidate receives an 85% on Monday and a 72% on Tuesday due to temperature, model quantization drift, and context positioning.", body_style))
@@ -223,7 +235,7 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
         "• <b>Result:</b> 100% mathematical reproducibility, zero score drift, full auditability."
     )
     story.append(make_callout(calc_box, bg=colors.HexColor("#EFF6FF"), border_color=ACCENT_BLUE))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     story.append(Paragraph("ADR-02: Hybrid RAG (pgvector + BM25) via Reciprocal Rank Fusion", h2_style))
     story.append(Paragraph("<b>The Problem:</b> Pure vector search relies on cosine similarity in embedding space. In tech recruitment, syntactically distinct skills have high cosine proximity because they appear in identical contexts (e.g., 'React', 'Angular', 'Vue' or 'Java' vs 'JavaScript'). Vector-only RAG frequently matches the wrong candidate.", body_style))
@@ -231,28 +243,26 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
     story.append(Paragraph("1. <b>Dense Semantic Retrieval:</b> pgvector cosine distance on 1536-D Gemini embeddings finds conceptual matches.", bullet_style))
     story.append(Paragraph("2. <b>Sparse Keyword Retrieval:</b> PostgreSQL <code>tsvector</code> / BM25 exact token matching ensures explicit requirement alignment.", bullet_style))
     story.append(Paragraph("3. <b>Reciprocal Rank Fusion (RRF):</b> Merges ranks using formula <code>RRF_Score = 1 / (60 + Rank_Vector) + 1 / (60 + Rank_Keyword)</code>, eliminating false positives by 40%.", bullet_style))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     story.append(Paragraph("ADR-03: 3-Stage Citation Verification Gate (Zero Hallucination)", h2_style))
     story.append(Paragraph("<b>Stage 1 (Zod Schema Validation):</b> LLM response is strictly validated against a strict runtime Zod schema.", bullet_style))
     story.append(Paragraph("<b>Stage 2 (Programmatic Quote Matching):</b> Every claim made by the LLM must supply an exact chunk ID and verbatim substring quotation. The backend programmatically searches the chunk text to verify the quote exists.", bullet_style))
     story.append(Paragraph("<b>Stage 3 (Downgrade Guard):</b> If a claim lacks verifiable resume evidence, it is automatically downgraded from <code>matched</code> to <code>uncertain</code> with zero score credit, completely preventing hallucinated skills.", bullet_style))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # ---------------------------------------------------------
     # SECTION 3: DATABASE SCHEMA & DATA GOVERNANCE
     # ---------------------------------------------------------
     story.append(make_section_banner("3. Database Schema, Multi-Tenancy & GDPR"))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     story.append(Paragraph("PostgreSQL Multi-Tenancy with Row-Level Security (RLS)", h2_style))
-    story.append(Paragraph("Rather than implementing soft multi-tenancy at the application layer where a missing <code>WHERE user_id = ...</code> clause causes data leaks, our system enforces isolation at the database kernel level:", body_style))
     story.append(Paragraph("• <b>Postgres RLS Policies:</b> Every table (<code>resumes</code>, <code>analyses</code>, <code>document_chunks</code>, <code>profiles</code>) enforces <code>USING (auth.uid() = user_id)</code>.", bullet_style))
     story.append(Paragraph("• <b>Database Triggers:</b> <code>handle_new_user()</code> automatically synchronizes auth users to profiles, and <code>cleanup_resume_chunks()</code> prevents orphaned embeddings.", bullet_style))
     story.append(Paragraph("• <b>GDPR Article 17 Right-to-Erasure:</b> A single call cascades from <code>auth.users</code> down through 12 relational tables, deleting private resume PDFs, 1536-D vector records, and cached interviews.", bullet_style))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
-    # Table of Core Database Tables
     table_data = [
         [Paragraph("<b>Table</b>", body_style), Paragraph("<b>Key Columns</b>", body_style), Paragraph("<b>Security & Indexes</b>", body_style)],
         [Paragraph("<code>profiles</code>", code_style), Paragraph("id (UUID), full_name, email, course, branch, year, college", body_style), Paragraph("PK -> auth.users. RLS enabled.", body_style)],
@@ -264,20 +274,23 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
     t_models.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), BG_LIGHT),
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER_LIGHT),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(t_models)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # ---------------------------------------------------------
-    # SECTION 4: TOUGH INTERVIEW QUESTIONS & MODEL ANSWERS
+    # SECTION 4: 15 TECHNICAL INTERVIEW QUESTIONS & MODEL ANSWERS
     # ---------------------------------------------------------
-    story.append(PageBreak()) # Clean page break for Q&A section
-    story.append(make_section_banner("4. Tough Technical Interview Questions & Answers"))
-    story.append(Spacer(1, 6))
+    story.append(PageBreak())
+    story.append(make_section_banner("4. 15 Tough Technical Interview Questions & Answers"))
+    story.append(Spacer(1, 4))
 
-    qa_list = [
+    # PART A
+    story.append(Paragraph("Part A: Architecture, RAG & AI Systems", h2_style))
+
+    qa_part_a = [
         (
             "Q1: Why did you choose Node.js ES Modules over Python for the backend?",
             "\"While Python is standard for model training, this project is a production microservice focused on high-concurrency I/O, multipart document uploads, and database stream handling. Node.js with native ES Modules provides high throughput and unified JSON serialization between frontend and backend. For AI capabilities, we communicate asynchronously with the Gemini API and PostgreSQL pgvector rather than running local PyTorch models, avoiding Python GIL constraints and unnecessary memory footprint.\""
@@ -287,30 +300,94 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
             "\"We implement defense-in-depth: First, the resume text is parsed strictly through structured PDF extractors with magic-byte verification, stripping executable macros. Second, during RAG chunking, we inject candidate text into the LLM prompt inside strict markdown quote enclosures with explicit system instructions treating input as un-executable data. Third, even if prompt injection succeeds in altering LLM text, it cannot inflate the match score because scores are computed mathematically outside the LLM context!\""
         ),
         (
-            "Q3: How do you handle database connection pooling and latency on Render / Supabase?",
+            "Q3: Why did you choose section-aware chunking instead of standard fixed-size sliding window chunking?",
+            "\"Fixed sliding-window chunking treats text as flat tokens, frequently splitting bullet points across arbitrary boundaries and misattributing accomplishments from one job to another. In resumes, semantics are strictly hierarchical. We engineered section-aware chunking that segments documents by semantic headers (Experience, Education, Projects, Skills) while keeping individual bullet points atomic. This ensures that when a chunk is retrieved, the entire achievement context and associated technologies are preserved together.\""
+        ),
+        (
+            "Q4: Explain the difference between IVFFlat and HNSW indexing in pgvector, and why you started with IVFFlat.",
+            "\"IVFFlat (Inverted File Flat) clusters vectors into Voronoi cells using k-means, requiring vectors to be trained into lists (lists = rows / 1000). It has a low memory footprint and fast build times, making it ideal for our initial deployment. HNSW (Hierarchical Navigable Small World) builds a multi-layer graph of vectors; it offers higher recall and faster query performance at high scale without requiring list retraining, but consumes 3-4x more RAM and has slower write speeds. As candidate vectors exceed 100,000 chunks, migrating to HNSW on dedicated read replicas is our scaling path.\""
+        ),
+        (
+            "Q5: How does the Career Intelligence module generate learning roadmaps without advising candidates to lie?",
+            "\"The engine partitions job requirements into two sets: verified matches and skill gaps. Gaps are passed to Gemini with a strict system prompt constraint: missing competencies must be framed exclusively as future learning milestones (e.g. 'Week 1: Core concepts, Week 2: Practical project build'), strictly forbidding the LLM from advising candidates to fabricate experience, invent previous employment titles, or exaggerate tenure. Every interview preparation question generated maps directly to the verbatim tech stack required by the verified job description.\""
+        )
+    ]
+
+    for q, a in qa_part_a:
+        story.append(Paragraph(q, q_style))
+        story.append(Paragraph(a, body_style))
+        story.append(Spacer(1, 4))
+
+    # PART B
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("Part B: Backend, Security, Parsing & Performance", h2_style))
+
+    qa_part_b = [
+        (
+            "Q6: How do you safely extract text from untrusted user-uploaded PDFs and Word documents?",
+            "\"We employ multi-tier ingestion validation: 1) Magic byte inspection (%PDF- for PDFs, PK\\x03\\x04 for DOCX) rather than relying on spoofable MIME headers or file extensions. 2) Memory-capped streaming via Multer with a 10MB hard ceiling to protect against buffer exhaustion. 3) Disabling JavaScript/action execution inside pdf-parse and mammoth text extraction pipelines. 4) Regex-based PII redaction (phones, emails, physical addresses) before vector chunk storage to ensure data privacy.\""
+        ),
+        (
+            "Q7: How do you standardize API responses and error handling across Express so clients never crash?",
+            "\"We implemented an enterprise JSend response envelope protocol (sendSuccess and sendPaginated) alongside a centralized globalErrorHandler. Every successful response returns { success: true, data, meta: { request_id, timestamp } }. Operational errors are modeled via an AppError class carrying HTTP status codes and machine-readable error codes (NOT_FOUND, USER_EXISTS, PROFILE_UPDATE_FAILED). An Express requestId middleware stamps every request with a UUID, allowing distributed tracing across frontend console logs and backend Morgan access logs.\""
+        ),
+        (
+            "Q8: How does your Canonical Skill Normalizer work, and how does it achieve O(1) lookup?",
+            "\"We construct an in-memory inverted index hash map at startup from our canonical skill database (canonical_name and JSONB aliases). When parsing a resume, candidate text is lowercased and stripped of punctuation tokens. Each token is checked against the hash map in O(1) average time complexity. To prevent dangerous false matches (e.g. Java matching JavaScript or C matching C++), we employ word-boundary tokenization (\\b) and a negative lookahead exclusion table rather than naive substring matching.\""
+        ),
+        (
+            "Q9: How do you prevent Denial of Service (DoS) attacks on expensive AI endpoints?",
+            "\"We built a defense-in-depth throttling architecture: 1) Global payload limiters in express.json({ limit: '100kb' }) to prevent JSON memory attacks. 2) Tiered IP-based rate limiting via express-rate-limit: generalReadLimiter (100 req/min) for fast reads, and standardWriteLimiter (20 req/min) on computationally heavy endpoints like /api/v1/analyses. 3) Client-side 60-second countdown guards on the authentication modal that disable submission buttons to prevent spamming upstream Supabase SMTP services.\""
+        ),
+        (
+            "Q10: What was the most difficult production bug you solved in this project?",
+            "\"We encountered a subtle rate-limiting and validation interaction on deployed environments: First, Supabase free-tier Auth limits password reset and confirmation emails to 1 request per 60 seconds (HTTP 429). When users rapidly clicked, it failed silently. I engineered a 60-second client-side cooldown countdown with auto-disabling triggers, coupled with a backend admin fallback endpoint (/api/v1/auth/register) that creates pre-confirmed candidate accounts via the Supabase Service Role, completely bypassing SMTP rate limits. Second, Zod's default request body parsing was stripping newly added academic fields (course, branch, year, college) on PATCH requests because they weren't in the strict schema; I updated the schema to accept optional and empty literals, and added local optimistic cache hydration to eliminate layout shifts on refresh.\""
+        )
+    ]
+
+    for q, a in qa_part_b:
+        story.append(Paragraph(q, q_style))
+        story.append(Paragraph(a, body_style))
+        story.append(Spacer(1, 4))
+
+    # PART C
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("Part C: Frontend, System Design & Production Reliability", h2_style))
+
+    qa_part_c = [
+        (
+            "Q11: Explain how CORS preflight (OPTIONS) requests work in your multi-origin deployment.",
+            "\"Because our frontend sends custom Authorization Bearer tokens and JSON payloads, browsers automatically dispatch an OPTIONS preflight request. We configured an Express CORS origin verification function that parses comma-separated FRONTEND_URL entries, strips trailing slashes to eliminate protocol mismatches, and dynamically validates origin against our whitelist (https://ai-placement-analyzer-two.vercel.app and http://localhost:5173). Requests from unauthorized origins are rejected immediately before reaching application routes, while valid origins receive Access-Control-Allow-Origin and Access-Control-Allow-Credentials: true.\""
+        ),
+        (
+            "Q12: Explain the complete authentication and authorization lifecycle from client login to database query.",
+            "\"1) Client logs in via Supabase Auth and receives an asymmetric JWT signed with the project's secret key. 2) The frontend apiClient automatically injects this token into the Authorization: Bearer <token> header for all API calls. 3) Backend authMiddleware validates the JWT signature and extracts the authenticated user UID (req.user.id). 4) When querying Supabase, the backend forwards the user's JWT so PostgreSQL evaluates auth.uid() = user_id natively inside Row-Level Security (RLS) policies. For administrative tasks, a separate isolated serviceClient with the Supabase Service Role key is utilized.\""
+        ),
+        (
+            "Q13: How did you implement the Placement Telemetry Curve in the frontend without layout shifts?",
+            "\"The telemetry curve is rendered using pure SVG cubic bezier splines with smoothed control points, mapping candidate competency against target role baselines. We styled it using custom CSS keyframes with stroke-dashoffset for drawing animations and animated radial gradients for glowing jewel beacons. To guarantee zero Cumulative Layout Shift (CLS) on page reload, we coupled the component with an optimistic local hydration cache (localStorage) and skeleton bento placeholders that match the exact dimensional height of the canvas before network data arrives.\""
+        ),
+        (
+            "Q14: How do you handle database connection pooling and query latency on Render and Supabase?",
             "\"Supabase provides PgBouncer on port 6543 for transaction-level connection pooling. Our Express backend maintains a lightweight client with keep-alive connections. For vector queries, we optimized the pgvector index with IVFFlat using appropriate list partitions (lists = rows / 1000), reducing vector search latency from 240ms down to 18ms under concurrent load.\""
         ),
         (
-            "Q4: What was the most difficult production bug you solved in this project?",
-            "\"We encountered a subtle rate-limiting and validation interaction on deployed environments: First, Supabase free-tier Auth limits password reset and confirmation emails to 1 request per 60 seconds (HTTP 429). When users rapidly clicked, it failed silently. I engineered a 60-second client-side cooldown countdown with auto-disabling triggers, coupled with a backend admin fallback endpoint (/api/v1/auth/register) that creates pre-confirmed candidate accounts via the Supabase Service Role, completely bypassing SMTP rate limits. Second, Zod's default request body parsing was stripping newly added academic fields (course, branch, year, college) on PATCH requests because they weren't in the strict schema; I updated the schema to accept optional and empty literals, and added local optimistic cache hydration to eliminate layout shifts on refresh.\""
-        ),
-        (
-            "Q5: How would you scale this platform to 1,000,000 Daily Active Users (DAU)?",
+            "Q15: How would you scale this platform to 1,000,000 Daily Active Users (DAU)?",
             "\"To scale 1000x: 1) Decouple PDF extraction and embedding generation using an asynchronous task queue (BullMQ + Redis) with horizontal worker autoscaling. 2) Cache canonical skill embeddings and frequent JD requirements in a Redis cluster to achieve 90% cache hits on embedding generation. 3) Transition PostgreSQL vector search from IVFFlat to HNSW indexing on dedicated read replicas, isolating vector similarity search from operational transactional tables. 4) Serve static Bento UI assets via Cloudflare CDN with edge caching.\""
         )
     ]
 
-    for q, a in qa_list:
+    for q, a in qa_part_c:
         story.append(Paragraph(q, q_style))
         story.append(Paragraph(a, body_style))
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
 
     # ---------------------------------------------------------
     # SECTION 5: BEHAVIORAL & STAR METHOD STORIES
     # ---------------------------------------------------------
-    story.append(Spacer(1, 4))
+    story.append(PageBreak())
     story.append(make_section_banner("5. Behavioral Stories (STAR Method)"))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     star_data = [
         ("Handling Ambiguity & Architectural Trade-offs",
@@ -329,14 +406,14 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
     for title, content in star_data:
         story.append(Paragraph(title, h2_style))
         story.append(make_callout(content, bg=BG_LIGHT, border_color=ACCENT_GREEN))
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
 
     # ---------------------------------------------------------
     # SECTION 6: CHEAT SHEET (NUMBERS TO QUOTE IN INTERVIEW)
     # ---------------------------------------------------------
     story.append(Spacer(1, 4))
     story.append(make_section_banner("6. Rapid Cheat Sheet — Numbers & Metrics to Quote"))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     metrics_data = [
         [Paragraph("<b>Metric / Dimension</b>", body_style), Paragraph("<b>Value / Standard</b>", body_style), Paragraph("<b>Context for Interviewer</b>", body_style)],
@@ -351,8 +428,8 @@ def build_pdf(filename="interview_preparation_guide.pdf"):
     t_metrics.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), BG_LIGHT),
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER_LIGHT),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(t_metrics)
 

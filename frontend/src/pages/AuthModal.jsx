@@ -37,8 +37,13 @@ export function AuthModal({ initialMode = 'login', isOpen, onClose, onSuccess })
         onSuccess();
         onClose();
       } else if (mode === 'signup') {
-        await signUp(email, password, fullName);
-        setMessage('Registration successful! Please check your email to confirm your account.');
+        const result = await signUp(email, password, fullName);
+        if (result?.session) {
+          onSuccess();
+          onClose();
+        } else {
+          setMessage('Registration successful! Please check your email to confirm your account.');
+        }
       } else if (mode === 'reset') {
         if (cooldown > 0) {
           setError(`Security cooldown active: Please wait ${cooldown}s before requesting another reset email.`);
@@ -144,6 +149,7 @@ export function AuthModal({ initialMode = 'login', isOpen, onClose, onSuccess })
                 <input
                   type="text"
                   required
+                  autoComplete="name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Aarav Sharma"
@@ -160,6 +166,7 @@ export function AuthModal({ initialMode = 'login', isOpen, onClose, onSuccess })
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="developer@example.com"
@@ -187,6 +194,7 @@ export function AuthModal({ initialMode = 'login', isOpen, onClose, onSuccess })
                 <input
                   type="password"
                   required
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
+import { apiClient } from '../lib/api.js';
 
 const AuthContext = createContext();
 
@@ -35,15 +36,34 @@ export function AuthProvider({ children }) {
   };
 
   const signUp = async (email, password, fullName) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName }
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName }
+        }
+      });
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      // If client hits Supabase SMTP rate limit (429 / over_email_send_rate_limit),
+      // seamlessly register via backend admin API with auto-confirmed email!
+      const isRateLimit =
+        err.status === 429 ||
+        err.code === 'over_email_send_rate_limit' ||
+        err.message?.toLowerCase().includes('rate limit');
+
+      if (isRateLimit) {
+        await apiClient('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({ email, password, full_name: fullName })
+        });
+        // Auto-sign in the newly created user
+        return await signIn(email, password);
       }
-    });
-    if (error) throw error;
-    return data;
+      throw err;
+    }
   };
 
   const signOut = async () => {

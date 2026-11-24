@@ -2,13 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { apiClient } from '../lib/api.js';
 import { Target, Clock, ArrowRight, Trash2, Edit2, Loader2, Sparkles, Check, X, TrendingUp } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
-import { useTheme } from '../context/ThemeContext.jsx';
 import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
 import { SkeletonCardGrid } from '../components/ui/Skeletons.jsx';
 
 export function AnalysisHistoryPage({ onOpenAnalysis, onNewAnalysis }) {
   const { toast } = useToast();
-  const { skeletonSimulator } = useTheme();
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -119,7 +117,7 @@ export function AnalysisHistoryPage({ onOpenAnalysis, onNewAnalysis }) {
         </ColorfulButton>
       </div>
 
-      {loading || skeletonSimulator ? (
+      {loading ? (
         <SkeletonCardGrid count={5} />
       ) : analyses.length > 0 ? (
         <div className="grid grid-cols-1 gap-4">

@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { useTheme } from '../../context/ThemeContext.jsx';
 import { ColorfulButton } from '../ui/ColorfulButton.jsx';
 import {
   Sparkles, LayoutDashboard, FileText, Target, History,
-  Settings, LogOut, LogIn, ChevronDown, Check, Zap, Eye
+  Settings, LogOut
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -17,10 +16,6 @@ const NAV_ITEMS = [
 
 export function CommandDock({ currentView, onNavigate, onOpenAuth }) {
   const { user, signOut } = useAuth();
-  const { theme, setTheme, themes, skeletonSimulator, toggleSkeletonSimulator } = useTheme();
-  const [paletteOpen, setPaletteOpen] = useState(false);
-
-  const activeThemeMeta = themes.find((t) => t.id === theme) || themes[0];
 
   return (
     <header className="sticky top-3 z-50 max-w-[1440px] mx-auto px-3 sm:px-6 w-full no-print">
@@ -67,93 +62,8 @@ export function CommandDock({ currentView, onNavigate, onOpenAuth }) {
           })}
         </div>
 
-        {/* Right Controls: Skeleton Simulator, Palette Studio & CTA */}
+        {/* Right Controls: User Auth Controls & Primary CTA */}
         <div className="flex items-center gap-2">
-          {/* Skeleton Simulator Trigger */}
-          <button
-            type="button"
-            onClick={toggleSkeletonSimulator}
-            title="Toggle geometry-matched shimmer skeleton preview"
-            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono-numbers font-semibold border transition-all ${
-              skeletonSimulator
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-sm'
-                : 'bg-card/60 border-border text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${skeletonSimulator ? 'bg-amber-400 animate-ping' : 'bg-muted-foreground'}`}></span>
-            <span>{skeletonSimulator ? 'Skeletons: ON' : 'Skeletons: OFF'}</span>
-          </button>
-
-          {/* Palette Studio Theme Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setPaletteOpen(!paletteOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-border bg-card/60 hover:bg-card text-foreground transition-all shadow-sm"
-              title="Switch luxury color palette"
-            >
-              <div className="flex -space-x-1">
-                {activeThemeMeta.swatches.map((color, i) => (
-                  <span
-                    key={i}
-                    style={{ backgroundColor: color }}
-                    className="w-2.5 h-2.5 rounded-full border border-background shadow-sm"
-                  ></span>
-                ))}
-              </div>
-              <span className="hidden lg:inline text-[11px] font-display font-medium">
-                {activeThemeMeta.label.split(' ')[0]}
-              </span>
-              <ChevronDown className="w-3 h-3 text-muted-foreground" />
-            </button>
-
-            {paletteOpen && (
-              <div
-                className="absolute right-0 mt-2 w-64 p-2 rounded-2xl bg-card border border-border shadow-2xl backdrop-blur-2xl space-y-1 text-xs z-50 animate-toast-slide-in"
-                onMouseLeave={() => setPaletteOpen(false)}
-              >
-                <div className="text-[10px] font-mono-numbers uppercase font-bold text-muted-foreground px-2 py-1">
-                  Luxury Theme Palettes
-                </div>
-                {themes.map((t) => {
-                  const isCurrent = t.id === theme;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        setTheme(t.id);
-                        setPaletteOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl transition-all ${
-                        isCurrent
-                          ? 'bg-primary/15 text-primary font-bold border border-primary/25'
-                          : 'hover:bg-muted text-foreground'
-                      }`}
-                    >
-                      <div className="flex flex-col text-left">
-                        <span className="font-display text-xs">{t.label}</span>
-                        <span className="text-[10px] text-muted-foreground">{t.category}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="flex -space-x-1">
-                          {t.swatches.map((c, idx) => (
-                            <span
-                              key={idx}
-                              style={{ backgroundColor: c }}
-                              className="w-3 h-3 rounded-full border border-card shadow-sm"
-                            ></span>
-                          ))}
-                        </div>
-                        {isCurrent && <Check className="w-3.5 h-3.5 text-primary ml-1" />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* User Auth Controls & Primary CTA */}
           {user ? (
             <div className="flex items-center gap-2">
               <button
@@ -189,7 +99,6 @@ export function CommandDock({ currentView, onNavigate, onOpenAuth }) {
               </ColorfulButton>
             </div>
           )}
-
         </div>
 
       </nav>

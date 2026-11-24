@@ -2,13 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { apiClient } from '../lib/api.js';
 import { CheckCircle2, ShieldCheck, Plus, X, ArrowRight, Save, User, BookOpen, Briefcase, Code, Sparkles, Loader2, FileText } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
-import { useTheme } from '../context/ThemeContext.jsx';
 import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
 import { SkeletonProfileReview } from '../components/ui/Skeletons.jsx';
 
 export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
   const { toast } = useToast();
-  const { skeletonSimulator } = useTheme();
   const [resume, setResume] = useState(null);
   const [profile, setProfile] = useState(null);
   const [skills, setSkills] = useState([]);
@@ -67,7 +65,7 @@ export function ResumeReviewPage({ resumeId, onConfirmSuccess, onBack }) {
     }
   };
 
-  if (loading || skeletonSimulator) {
+  if (loading) {
     return <SkeletonProfileReview />;
   }
 

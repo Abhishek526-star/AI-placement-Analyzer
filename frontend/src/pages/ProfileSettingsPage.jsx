@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useTheme } from '../context/ThemeContext.jsx';
 import { apiClient } from '../lib/api.js';
 import { User, ShieldAlert, Trash2, Save, CheckCircle2, AlertTriangle, Loader2, ShieldCheck, Key } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
@@ -10,7 +9,6 @@ import { SkeletonCardGrid } from '../components/ui/Skeletons.jsx';
 export function ProfileSettingsPage({ onSignOut }) {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
-  const { skeletonSimulator } = useTheme();
   const [profile, setProfile] = useState({ full_name: '', email: user?.email || '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -87,7 +85,7 @@ export function ProfileSettingsPage({ onSignOut }) {
     }
   };
 
-  if (loading || skeletonSimulator) {
+  if (loading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
         <SkeletonCardGrid count={3} />

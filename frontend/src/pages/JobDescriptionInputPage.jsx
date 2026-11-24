@@ -6,10 +6,8 @@ import { JobTitleSelect } from '../components/JobTitleSelect.jsx';
 import { ExperienceLevelSelect } from '../components/ExperienceLevelSelect.jsx';
 import { CompanySelect } from '../components/CompanySelect.jsx';
 import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
-import { useTheme } from '../context/ThemeContext.jsx';
 
 export function JobDescriptionInputPage({ onJdCreated, onBack }) {
-  const { skeletonSimulator } = useTheme();
   const defaultRole = POPULAR_JOB_CATEGORIES[0]?.roles[0]?.title || 'Full Stack Developer (MERN)';
   
   const [selectedRole, setSelectedRole] = useState(defaultRole);
@@ -172,7 +170,7 @@ export function JobDescriptionInputPage({ onJdCreated, onBack }) {
       )}
 
       {/* Multi-Step Analysis Pipeline Loading Banner */}
-      {(loading || skeletonSimulator) && (
+      {loading && (
         <div className="bento-card p-6 sm:p-7 rounded-3xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -185,22 +183,22 @@ export function JobDescriptionInputPage({ onJdCreated, onBack }) {
               </span>
             </div>
             <span className="text-xs font-mono-numbers font-bold text-primary px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20">
-              {loading ? Math.min(100, analysisStep * 25) : 75}%
+              {Math.min(100, analysisStep * 25)}%
             </span>
           </div>
 
           <div className="w-full h-2 rounded-full bg-card/80 border border-border/50 overflow-hidden relative">
             <div
               className="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 transition-all duration-500 rounded-full animate-ribbon-progress"
-              style={{ width: `${loading ? Math.min(100, analysisStep * 25) : 75}%` }}
+              style={{ width: `${Math.min(100, analysisStep * 25)}%` }}
             ></div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
             {pipelineStages.map((st, idx) => {
               const num = idx + 1;
-              const isDone = loading ? analysisStep > num : idx < 2;
-              const isActive = loading ? analysisStep === num : idx === 2;
+              const isDone = analysisStep > num;
+              const isActive = analysisStep === num;
 
               return (
                 <div

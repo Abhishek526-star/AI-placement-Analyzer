@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { apiClient } from '../lib/api.js';
 import { useToast } from '../context/ToastContext.jsx';
-import { useTheme } from '../context/ThemeContext.jsx';
 import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
 import {
   SkeletonKPICard,
@@ -20,7 +19,6 @@ import {
 
 export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
   const { toast } = useToast();
-  const { skeletonSimulator } = useTheme();
 
   const [activeTab, setActiveTab] = useState('overview');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -410,7 +408,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
         {/* ======================================================================= */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {skeletonSimulator ? (
+            {!analysis ? (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
                   <SkeletonDonutChart className="lg:col-span-4" />
@@ -881,7 +879,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
               ))}
             </div>
 
-            {skeletonSimulator ? (
+            {!skillMatches || skillMatches.length === 0 ? (
               <SkeletonCardGrid count={6} />
             ) : (
               <div className="space-y-3">
@@ -1280,7 +1278,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
               </ColorfulButton>
             </div>
 
-            {loadingQuestions || skeletonSimulator ? (
+            {loadingQuestions ? (
               <SkeletonCardGrid count={4} />
             ) : (
               <div className="space-y-3.5">
@@ -1599,7 +1597,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
               </ColorfulButton>
             </div>
 
-            {loadingRoadmap || skeletonSimulator ? (
+            {loadingRoadmap ? (
               <SkeletonCardGrid count={4} />
             ) : (
               <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-border/60">
@@ -1644,7 +1642,7 @@ export function AnalysisResultsPage({ analysis, onNewAnalysis }) {
               </p>
             </div>
 
-            {loadingSuggestions || skeletonSimulator ? (
+            {loadingSuggestions ? (
               <SkeletonCardGrid count={3} />
             ) : (
               <div className="grid grid-cols-1 gap-3.5">

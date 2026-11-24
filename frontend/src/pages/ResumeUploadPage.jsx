@@ -3,10 +3,8 @@ import { UploadCloud, FileText, CheckCircle2, AlertCircle, ArrowRight, Loader2, 
 import { apiClient } from '../lib/api.js';
 import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
 import { SkeletonPipeline } from '../components/ui/Skeletons.jsx';
-import { useTheme } from '../context/ThemeContext.jsx';
 
 export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
-  const { skeletonSimulator } = useTheme();
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -161,7 +159,7 @@ export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
       </div>
 
       {/* Multi-Stage Animated Pipeline Loader */}
-      {(uploading || skeletonSimulator) && (
+      {uploading && (
         <div className="bento-card p-6 sm:p-7 rounded-3xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -174,7 +172,7 @@ export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
               </span>
             </div>
             <span className="text-xs font-mono-numbers font-bold text-primary px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20">
-              {uploading ? Math.min(100, currentStep * 25) : 75}% Complete
+              {Math.min(100, currentStep * 25)}% Complete
             </span>
           </div>
 
@@ -182,7 +180,7 @@ export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
           <div className="w-full h-2 rounded-full bg-card/80 border border-border/50 overflow-hidden relative">
             <div
               className="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 transition-all duration-500 rounded-full animate-ribbon-progress"
-              style={{ width: `${uploading ? Math.min(100, currentStep * 25) : 75}%` }}
+              style={{ width: `${Math.min(100, currentStep * 25)}%` }}
             ></div>
           </div>
 
@@ -190,8 +188,8 @@ export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
             {steps.map((st, idx) => {
               const stepNumber = idx + 1;
-              const isDone = uploading ? currentStep > idx : idx < 3;
-              const isActive = uploading ? currentStep === stepNumber : idx === 2;
+              const isDone = currentStep > idx;
+              const isActive = currentStep === stepNumber;
 
               return (
                 <div

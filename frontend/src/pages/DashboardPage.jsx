@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useTheme } from '../context/ThemeContext.jsx';
 import { apiClient } from '../lib/api.js';
 import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
 import {
@@ -17,7 +16,6 @@ import {
 
 export function DashboardPage({ onNavigate, onOpenAnalysis }) {
   const { user } = useAuth();
-  const { skeletonSimulator } = useTheme();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +38,7 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
       });
   }, []);
 
-  const showSkeletons = loading || skeletonSimulator;
+  const showSkeletons = loading;
 
   return (
     <div className="space-y-6">

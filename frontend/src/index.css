@@ -33,99 +33,6 @@
     --aurora-2: rgba(236, 72, 153, 0.10);
   }
 
-  [data-theme="alabaster-editorial"] {
-    --canvas: #F7F4EE;
-    --background: #F7F4EE;
-    --foreground: #171412;
-    --card: rgba(255, 255, 255, 0.88);
-    --card-foreground: #171412;
-    --card-hover: #FFFFFF;
-    --primary: #E54D2E;
-    --primary-foreground: #FFFFFF;
-    --primary-hover: #C53B1E;
-    --muted: #EFECE6;
-    --muted-foreground: #736B63;
-    --border: rgba(220, 215, 204, 0.9);
-    --accent: #6D28D9;
-    --success: #0D9488;
-    --warning: #D97706;
-    --danger: #E54D2E;
-
-    --accent-coral: #E54D2E;
-    --accent-mint: #0D9488;
-    --accent-violet: #6D28D9;
-    --accent-amber: #D97706;
-    --accent-cyan: #0284C7;
-
-    --dock-bg: rgba(255, 255, 255, 0.92);
-    --dock-border: rgba(0, 0, 0, 0.08);
-    --dot-color: rgba(0, 0, 0, 0.05);
-    --aurora-1: rgba(229, 77, 46, 0.08);
-    --aurora-2: rgba(13, 148, 136, 0.08);
-  }
-
-  [data-theme="emerald-biolume"] {
-    --canvas: #06120F;
-    --background: #06120F;
-    --foreground: #ECFDF5;
-    --card: rgba(12, 33, 27, 0.80);
-    --card-foreground: #ECFDF5;
-    --card-hover: rgba(16, 44, 36, 0.90);
-    --primary: #10B981;
-    --primary-foreground: #06120F;
-    --primary-hover: #059669;
-    --muted: rgba(12, 36, 29, 0.75);
-    --muted-foreground: #6EE7B7;
-    --border: rgba(16, 185, 129, 0.20);
-    --accent: #A855F7;
-    --success: #00F5D4;
-    --warning: #FBBF24;
-    --danger: #F43F5E;
-
-    --accent-coral: #F43F5E;
-    --accent-mint: #00F5D4;
-    --accent-violet: #A855F7;
-    --accent-amber: #FBBF24;
-    --accent-cyan: #38BDF8;
-
-    --dock-bg: rgba(9, 26, 21, 0.88);
-    --dock-border: rgba(16, 185, 129, 0.25);
-    --dot-color: rgba(52, 211, 153, 0.08);
-    --aurora-1: rgba(16, 185, 129, 0.15);
-    --aurora-2: rgba(0, 245, 212, 0.12);
-  }
-
-  [data-theme="sunset-amethyst"] {
-    --canvas: #13091F;
-    --background: #13091F;
-    --foreground: #FAF5FF;
-    --card: rgba(34, 17, 54, 0.78);
-    --card-foreground: #FAF5FF;
-    --card-hover: rgba(46, 23, 72, 0.88);
-    --primary: #C084FC;
-    --primary-foreground: #13091F;
-    --primary-hover: #A855F7;
-    --muted: rgba(38, 19, 61, 0.75);
-    --muted-foreground: #D8B4FE;
-    --border: rgba(168, 85, 247, 0.20);
-    --accent: #A855F7;
-    --success: #2DD4BF;
-    --warning: #FB923C;
-    --danger: #FB7185;
-
-    --accent-coral: #FB7185;
-    --accent-mint: #2DD4BF;
-    --accent-violet: #A855F7;
-    --accent-amber: #FB923C;
-    --accent-cyan: #38BDF8;
-
-    --dock-bg: rgba(26, 13, 42, 0.88);
-    --dock-border: rgba(168, 85, 247, 0.25);
-    --dot-color: rgba(216, 180, 254, 0.07);
-    --aurora-1: rgba(192, 132, 252, 0.15);
-    --aurora-2: rgba(251, 113, 133, 0.12);
-  }
-
   body {
     background-color: var(--background);
     color: var(--foreground);
@@ -213,7 +120,7 @@
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.15), transparent);
     animation: skeletonShimmer 1.55s infinite ease-in-out;
   }
 

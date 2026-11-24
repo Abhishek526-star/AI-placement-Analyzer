@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { X, Lock, Mail, User, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
+import { X, Lock, Mail, User, AlertCircle, CheckCircle, Sparkles, Clock } from 'lucide-react';
 import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
 
 export function AuthModal({ initialMode = 'login', isOpen, onClose, onSuccess }) {
@@ -11,8 +11,17 @@ export function AuthModal({ initialMode = 'login', isOpen, onClose, onSuccess })
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
   const { signIn, signUp, resetPassword } = useAuth();
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const interval = setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldown]);
 
   if (!isOpen) return null;
 
@@ -31,11 +40,27 @@ export function AuthModal({ initialMode = 'login', isOpen, onClose, onSuccess })
         await signUp(email, password, fullName);
         setMessage('Registration successful! Please check your email to confirm your account.');
       } else if (mode === 'reset') {
+        if (cooldown > 0) {
+          setError(`Security cooldown active: Please wait ${cooldown}s before requesting another reset email.`);
+          setLoading(false);
+          return;
+        }
         await resetPassword(email);
         setMessage('Password reset email sent. Please check your inbox.');
+        setCooldown(60);
       }
     } catch (err) {
-      setError(err.message || 'An error occurred during authentication.');
+      const is429 = err.status === 429 ||
+        err.message?.toLowerCase().includes('rate limit') ||
+        err.message?.includes('429') ||
+        err.message?.toLowerCase().includes('60 seconds');
+
+      if (is429) {
+        setError('Security Cooldown: Supabase allows password reset requests once every 60 seconds. Please wait before trying again.');
+        if (cooldown === 0) setCooldown(60);
+      } else {
+        setError(err.message || 'An error occurred during authentication.');
+      }
     } finally {
       setLoading(false);
     }
@@ -171,20 +196,37 @@ export function AuthModal({ initialMode = 'login', isOpen, onClose, onSuccess })
             </div>
           )}
 
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <ColorfulButton
               type="submit"
               variant="prism"
               size="lg"
               className="w-full"
               loading={loading}
+              disabled={loading || (mode === 'reset' && cooldown > 0)}
               loadingText="Authenticating..."
               icon={Sparkles}
             >
               {mode === 'login' && 'Sign In to Cockpit'}
               {mode === 'signup' && 'Create Candidate Account'}
-              {mode === 'reset' && 'Send Password Reset'}
+              {mode === 'reset' && (cooldown > 0 ? `Wait ${cooldown}s to Resend` : 'Send Password Reset Link')}
             </ColorfulButton>
+
+            {mode === 'reset' && (
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setError(null);
+                    setMessage(null);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors underline"
+                >
+                  Back to Sign In
+                </button>
+              </div>
+            )}
           </div>
         </form>
       </div>

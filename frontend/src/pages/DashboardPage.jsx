@@ -9,7 +9,7 @@ import {
   SkeletonCardGrid
 } from '../components/ui/Skeletons.jsx';
 import {
-  FileText, Target, AlertCircle, ArrowUpRight, CheckCircle2,
+  FileText, Target, AlertCircle, ArrowUpRight, ArrowRight, CheckCircle2,
   Clock, Sparkles, ShieldCheck, Database, Lock, Activity,
   TrendingUp, Award, Layers
 } from 'lucide-react';
@@ -39,6 +39,53 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
   }, []);
 
   const showSkeletons = loading;
+
+  // Resolved telemetry metrics
+  const totalAnalyses = summary?.total_analyses ?? 0;
+
+  // Active Resume details
+  const resumeFilename = summary?.active_resume?.filename || summary?.active_resume?.file_name;
+  const hasResume = Boolean(resumeFilename);
+  const resumeVersion = summary?.active_resume?.version || 1;
+  const skillsCount = summary?.active_resume?.skills_count || 0;
+
+  // Latest ATS Match details
+  const hasAnalysis = Boolean(summary?.latest_analysis);
+  const rawScore = summary?.latest_analysis?.match_score;
+  const hasValidScore = rawScore !== null && rawScore !== undefined;
+  const matchScore = hasValidScore ? Math.round(Number(rawScore)) : null;
+  const rawAlignment = (summary?.latest_analysis?.alignment_level || '').toLowerCase();
+
+  let alignmentBadge = {
+    label: 'Awaiting Run',
+    className: 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+  };
+  if (hasAnalysis) {
+    if (rawAlignment === 'strong' || (matchScore !== null && matchScore >= 80)) {
+      alignmentBadge = {
+        label: 'Strong Fit',
+        className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+      };
+    } else if (rawAlignment === 'moderate' || (matchScore !== null && matchScore >= 60)) {
+      alignmentBadge = {
+        label: 'Moderate Fit',
+        className: 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+      };
+    } else if (rawAlignment === 'partial' || (matchScore !== null && matchScore >= 40)) {
+      alignmentBadge = {
+        label: 'Partial Match',
+        className: 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+      };
+    } else {
+      alignmentBadge = {
+        label: 'Low Alignment',
+        className: 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+      };
+    }
+  }
+
+  // Priority Gap details
+  const topGap = summary?.top_skill_gaps?.[0];
 
   return (
     <div className="space-y-6">
@@ -81,103 +128,236 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
           </>
         ) : (
           <>
-            {/* KPI 1: Total Analyses */}
-            <div className="bento-card p-5 rounded-3xl relative overflow-hidden space-y-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="font-display font-semibold uppercase tracking-wider text-[11px]">
+            {/* KPI 1: Total Analyses (Indigo/Violet Jewel) */}
+            <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[185px] group hover:border-white/20 transition-all duration-300">
+              <div className="nav-specular-highlight absolute top-0 inset-x-4 h-[1.5px] pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity"></div>
+              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none"></div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
                   Total Analyses
                 </span>
-                <Target className="w-4 h-4 text-indigo-400" />
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-500/20 to-purple-500/30 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.25)] group-hover:scale-105 transition-transform">
+                  <Target className="w-4 h-4" />
+                </div>
               </div>
-              <div className="flex items-baseline justify-between">
-                <span className="font-display text-3xl sm:text-4xl font-extrabold text-foreground font-mono-numbers">
-                  {summary?.total_analyses ?? 0}
+
+              <div className="flex items-baseline justify-between my-2">
+                <span className="font-display font-mono-numbers text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">
+                  {totalAnalyses}
                 </span>
-                <span className="text-xs font-mono font-bold text-indigo-400">Processed</span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
+                  {totalAnalyses === 1 ? 'Run Logged' : 'Runs Logged'}
+                </span>
               </div>
-              {/* 6-bar mini sparkline */}
-              <div className="h-6 flex items-end gap-1.5 pt-1">
-                {[45, 60, 50, 75, 90, 100].map((h, i) => (
-                  <span
-                    key={i}
-                    style={{ height: `${h}%` }}
-                    className={`flex-1 rounded-sm ${i === 5 ? 'bg-indigo-400 animate-bar-breathe' : 'bg-indigo-500/40'}`}
-                  ></span>
-                ))}
+
+              <div>
+                <div className="h-6 w-full relative flex items-end">
+                  <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 24">
+                    <defs>
+                      <linearGradient id="kpi-grad-indigo" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#818cf8" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#818cf8" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M0,18 Q20,16 35,12 T70,8 T100,3 L100,24 L0,24 Z" fill="url(#kpi-grad-indigo)" />
+                    <path d="M0,18 Q20,16 35,12 T70,8 T100,3" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" />
+                    <circle cx="100" cy="3" r="2.5" fill="#a5b4fc" className="animate-pulse" />
+                  </svg>
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mt-1.5 pt-1 border-t border-white/5">
+                  <span>FR-08 Telemetry</span>
+                  <span className="text-indigo-400 font-semibold">Deterministic</span>
+                </div>
               </div>
             </div>
 
-            {/* KPI 2: Active Resume */}
-            <div className="bento-card p-5 rounded-3xl relative overflow-hidden space-y-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="font-display font-semibold uppercase tracking-wider text-[11px]">
+            {/* KPI 2: Active Resume Profile (Cyan/Sky Jewel) */}
+            <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[185px] group hover:border-white/20 transition-all duration-300">
+              <div className="nav-specular-highlight absolute top-0 inset-x-4 h-[1.5px] pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity"></div>
+              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-cyan-500/10 blur-2xl pointer-events-none"></div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
                   Active Resume
                 </span>
-                <FileText className="w-4 h-4 text-cyan-400" />
-              </div>
-              <div className="space-y-0.5">
-                <div className="font-display text-lg font-bold text-foreground truncate font-mono">
-                  {summary?.active_resume?.file_name || 'No resume uploaded'}
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/30 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.25)] group-hover:scale-105 transition-transform">
+                  <FileText className="w-4 h-4" />
                 </div>
-                <p className="text-xs text-muted-foreground font-mono">
-                  {summary?.active_resume?.version ? `Version ${summary.active_resume.version}` : 'Upload to start'}
-                </p>
               </div>
-              <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full w-[85%]"></div>
-              </div>
+
+              {hasResume ? (
+                <>
+                  <div className="space-y-1 my-2">
+                    <div className="font-display text-base font-bold text-foreground truncate max-w-[210px]" title={resumeFilename}>
+                      {resumeFilename}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/25">
+                        v{resumeVersion} • Active
+                      </span>
+                      {skillsCount > 0 && (
+                        <span className="text-[11px] text-muted-foreground font-mono">{skillsCount} Skills</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden relative">
+                      <div className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full w-[88%] shadow-[0_0_10px_rgba(6,182,212,0.5)]"></div>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mt-1.5 pt-1 border-t border-white/5">
+                      <span>Profile Health</span>
+                      <span className="text-cyan-400 font-semibold">{skillsCount > 0 ? `${skillsCount} Parsed` : 'Active'}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5 my-2">
+                    <div className="font-display text-base font-semibold text-muted-foreground">
+                      No Profile Loaded
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('resumes')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 transition-all select-none"
+                    >
+                      <span>Upload Resume</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div>
+                    <div className="h-1.5 rounded-full bg-white/5 border border-dashed border-white/10"></div>
+                    <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mt-1.5 pt-1 border-t border-white/5">
+                      <span>Resume Engine</span>
+                      <span className="text-slate-400">PDF / DOCX Ready</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* KPI 3: Latest Match Score */}
-            <div className="bento-card p-5 rounded-3xl relative overflow-hidden space-y-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="font-display font-semibold uppercase tracking-wider text-[11px]">
+            {/* KPI 3: Latest ATS Placement Match (Emerald/Mint Jewel) */}
+            <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[185px] group hover:border-white/20 transition-all duration-300">
+              <div className="nav-specular-highlight absolute top-0 inset-x-4 h-[1.5px] pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity"></div>
+              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none"></div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   Latest ATS Match
                 </span>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/30 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.25)] group-hover:scale-105 transition-transform">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
               </div>
-              <div className="flex items-baseline justify-between">
-                <span className="font-display text-3xl sm:text-4xl font-extrabold text-foreground font-mono-numbers">
-                  {summary?.latest_analysis?.match_score ? `${summary.latest_analysis.match_score}%` : '—'}
+
+              <div className="flex items-baseline justify-between my-2">
+                <span className="font-display font-mono-numbers text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight">
+                  {matchScore !== null ? `${matchScore}%` : '—'}
                 </span>
-                <span className="text-xs font-mono font-bold text-emerald-400 capitalize">
-                  {summary?.latest_analysis?.alignment_level || 'Awaiting Run'}
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${alignmentBadge.className}`}>
+                  {alignmentBadge.label}
                 </span>
               </div>
-              {/* 6-bar mini sparkline */}
-              <div className="h-6 flex items-end gap-1.5 pt-1">
-                {[55, 65, 70, 80, 85, 92].map((h, i) => (
-                  <span
-                    key={i}
-                    style={{ height: `${h}%` }}
-                    className={`flex-1 rounded-sm ${i === 5 ? 'bg-emerald-400 animate-bar-breathe' : 'bg-emerald-500/40'}`}
-                  ></span>
-                ))}
+
+              <div>
+                <div className="h-6 w-full relative flex items-end">
+                  {hasAnalysis ? (
+                    <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 24">
+                      <defs>
+                        <linearGradient id="kpi-grad-emerald" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#34d399" stopOpacity="0.35" />
+                          <stop offset="100%" stopColor="#34d399" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+                      <path d="M0,20 Q25,18 45,10 T80,5 T100,2 L100,24 L0,24 Z" fill="url(#kpi-grad-emerald)" />
+                      <path d="M0,20 Q25,18 45,10 T80,5 T100,2" fill="none" stroke="#34d399" strokeWidth="2" strokeLinecap="round" />
+                      <circle cx="100" cy="2" r="2.5" fill="#6ee7b7" className="animate-pulse" />
+                    </svg>
+                  ) : (
+                    <div className="w-full border-b border-dashed border-white/10 mb-2"></div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mt-1.5 pt-1 border-t border-white/5">
+                  <span>Benchmark Target</span>
+                  <span className="text-emerald-400 font-semibold">
+                    {hasAnalysis ? (matchScore >= 80 ? 'Target Hit' : 'In Progress') : 'Awaiting Run'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* KPI 4: Top Skill Gap */}
-            <div className="bento-card p-5 rounded-3xl relative overflow-hidden space-y-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="font-display font-semibold uppercase tracking-wider text-[11px]">
-                  Priority Gap
+            {/* KPI 4: Priority Skill Gap (Amber/Coral Jewel) */}
+            <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[185px] group hover:border-white/20 transition-all duration-300">
+              <div className="nav-specular-highlight absolute top-0 inset-x-4 h-[1.5px] pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity"></div>
+              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-amber-500/10 blur-2xl pointer-events-none"></div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  Priority Skill Gap
                 </span>
-                <AlertCircle className="w-4 h-4 text-amber-400" />
-              </div>
-              <div className="space-y-0.5">
-                <div className="font-display text-base font-bold text-foreground truncate">
-                  {summary?.top_skill_gaps?.[0] || 'None identified'}
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-orange-500/30 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)] group-hover:scale-105 transition-transform">
+                  <AlertCircle className="w-4 h-4" />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Focus area for placement prep
-                </p>
               </div>
-              <div className="text-[11px] font-mono font-bold text-amber-400 flex items-center gap-1">
-                <span>Action:</span>
-                <span className="underline cursor-pointer" onClick={() => onNavigate('resumes')}>
-                  Optimize in Resume
-                </span>
-              </div>
+
+              {topGap ? (
+                <>
+                  <div className="space-y-1 my-2">
+                    <div className="font-display text-xl font-bold text-foreground truncate" title={topGap}>
+                      {topGap}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                        High Impact Gap
+                      </span>
+                      <span className="text-[11px] text-muted-foreground truncate">Target Placement Skill</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-1 border-t border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('resumes')}
+                      className="w-full py-1.5 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-300 text-xs font-semibold flex items-center justify-between transition-colors select-none group/btn"
+                    >
+                      <span>Bridge Skill Gap</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1 my-2">
+                    <div className="font-display text-xl font-bold text-emerald-400">
+                      {hasAnalysis ? 'All Core Matched!' : 'Ready for Match'}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                        {hasAnalysis ? '100% Aligned' : 'Awaiting JD'}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Placement Profile</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-1 border-t border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('analyze')}
+                      className="w-full py-1.5 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-300 text-xs font-semibold flex items-center justify-between transition-colors select-none group/btn"
+                    >
+                      <span>Start New Analysis</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </>
         )}

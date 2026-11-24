@@ -6,24 +6,32 @@ import { Loader2 } from 'lucide-react';
  */
 export function SkeletonKPICard({ className = '' }) {
   return (
-    <div className={`bento-card p-5 rounded-3xl relative overflow-hidden space-y-3.5 ${className}`}>
+    <div className={`bento-card p-5 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[185px] ${className}`}>
+      {/* Top specular hairline skeleton */}
+      <div className="absolute top-0 inset-x-4 h-[1.5px] bg-white/10 pointer-events-none"></div>
+
+      {/* Row 1: Eyebrow label + Jewel Squircle */}
       <div className="flex items-center justify-between">
-        <div className="h-3.5 w-28 skeleton-wave rounded-md"></div>
-        <div className="w-5 h-5 skeleton-wave rounded-full"></div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full skeleton-wave"></div>
+          <div className="h-3 w-24 skeleton-wave rounded-md"></div>
+        </div>
+        <div className="w-9 h-9 skeleton-wave rounded-2xl"></div>
       </div>
-      <div className="flex items-baseline justify-between">
-        <div className="h-9 w-24 skeleton-wave rounded-lg"></div>
-        <div className="h-4 w-12 skeleton-wave rounded-md"></div>
+
+      {/* Row 2: Hero Metric + Context Badge */}
+      <div className="flex items-baseline justify-between my-2">
+        <div className="h-8 w-20 skeleton-wave rounded-lg"></div>
+        <div className="h-5 w-16 skeleton-wave rounded-full"></div>
       </div>
-      {/* Breathing 6-bar sparkline skeleton */}
-      <div className="h-6 flex items-end gap-1.5 pt-1">
-        {[40, 60, 50, 85, 70, 95].map((h, i) => (
-          <span
-            key={i}
-            style={{ height: `${h}%` }}
-            className="flex-1 skeleton-wave rounded-sm"
-          ></span>
-        ))}
+
+      {/* Row 3: Fluid SVG spline curve placeholder */}
+      <div className="space-y-1.5">
+        <div className="h-5 w-full skeleton-wave rounded-md opacity-60"></div>
+        <div className="flex items-center justify-between pt-1 border-t border-white/5">
+          <div className="h-2.5 w-16 skeleton-wave rounded-md"></div>
+          <div className="h-2.5 w-10 skeleton-wave rounded-md"></div>
+        </div>
       </div>
     </div>
   );

@@ -90,7 +90,7 @@ export function AnalysisHistoryPage({ onOpenAnalysis, onNewAnalysis }) {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* Header Bento Card */}
       <div className="bento-card p-6 sm:p-7 rounded-3xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { ToastProvider, useToast } from './context/ToastContext.jsx';
@@ -24,6 +24,10 @@ function MainLayout() {
   const [activeResumeId, setActiveResumeId] = useState(null);
   const [activeJdId, setActiveJdId] = useState(null);
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [currentView]);
 
   const handleOpenAuth = (mode = 'login') => {
     setAuthModalMode(mode);
@@ -137,7 +141,7 @@ function MainLayout() {
       />
 
       {/* Full-Width Cockpit Main Canvas */}
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 py-6 overflow-y-auto">
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 py-6">
         {currentView === 'dashboard' && (
           <DashboardPage
             onNavigate={setCurrentView}

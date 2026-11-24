@@ -86,7 +86,7 @@ export function ResumeUploadPage({ onUploadSuccess, onCancel }) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* Header Banner */}
       <div className="bento-card p-6 sm:p-7 rounded-3xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">

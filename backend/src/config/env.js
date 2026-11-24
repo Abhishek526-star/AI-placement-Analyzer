@@ -19,7 +19,7 @@ const envSchema = z.object({
     'test'
   ]).default('development'),
 
-  FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+  FRONTEND_URL: z.string().default('http://localhost:5173'),
 
   SUPABASE_URL: z.string().url(),
 

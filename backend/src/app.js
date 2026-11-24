@@ -20,10 +20,23 @@ if (env.NODE_ENV !== 'test') {
 // 3. Security Headers via Helmet
 app.use(helmet());
 
-// 4. Strict CORS Configuration
+// 4. Robust Multi-Origin CORS Configuration
+const allowedOrigins = (env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      const normalizedOrigin = origin.replace(/\/+$/, '');
+      if (allowedOrigins.includes(normalizedOrigin) || env.NODE_ENV === 'development') {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS blocked: Origin ${origin} is not allowed.`));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id']

@@ -4,7 +4,7 @@ import { apiClient } from '../lib/api.js';
 import {
   User, ShieldAlert, Trash2, Save, CheckCircle2, AlertTriangle,
   ShieldCheck, Key, Mail, Copy, Check, Lock, Shield, Sparkles,
-  Calendar, Fingerprint, Database, Cpu
+  Calendar, Fingerprint, Database, GraduationCap, BookOpen, Building
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext.jsx';
 import { ColorfulButton } from '../components/ui/ColorfulButton.jsx';
@@ -37,7 +37,15 @@ function formatMemberSince(dateString) {
 export function ProfileSettingsPage({ onSignOut }) {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
-  const [profile, setProfile] = useState({ full_name: '', email: user?.email || '', created_at: null });
+  const [profile, setProfile] = useState({
+    full_name: '',
+    email: user?.email || '',
+    course: '',
+    branch: '',
+    year: '',
+    college: '',
+    created_at: null
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -57,6 +65,10 @@ export function ProfileSettingsPage({ onSignOut }) {
           setProfile({
             full_name: data.full_name || '',
             email: data.email || user?.email || '',
+            course: data.course || '',
+            branch: data.branch || '',
+            year: data.year || '',
+            college: data.college || '',
             created_at: data.created_at
           });
         }
@@ -67,6 +79,10 @@ export function ProfileSettingsPage({ onSignOut }) {
         setProfile({
           full_name: '',
           email: user?.email || '',
+          course: '',
+          branch: '',
+          year: '',
+          college: '',
           created_at: new Date().toISOString()
         });
         setLoading(false);
@@ -82,11 +98,24 @@ export function ProfileSettingsPage({ onSignOut }) {
     try {
       const updated = await apiClient('/profile', {
         method: 'PATCH',
-        body: JSON.stringify({ full_name: profile.full_name })
+        body: JSON.stringify({
+          full_name: profile.full_name,
+          course: profile.course,
+          branch: profile.branch,
+          year: profile.year,
+          college: profile.college
+        })
       });
-      setProfile((prev) => ({ ...prev, full_name: updated.full_name }));
+      setProfile((prev) => ({
+        ...prev,
+        full_name: updated.full_name !== undefined ? updated.full_name : prev.full_name,
+        course: updated.course !== undefined ? updated.course : prev.course,
+        branch: updated.branch !== undefined ? updated.branch : prev.branch,
+        year: updated.year !== undefined ? updated.year : prev.year,
+        college: updated.college !== undefined ? updated.college : prev.college
+      }));
       setSaveSuccess(true);
-      toast.success('Candidate profile updated successfully!', 'Profile Saved');
+      toast.success('Candidate profile and academic background updated!', 'Profile Saved');
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       setError(err.message || 'Failed to update profile');
@@ -149,7 +178,7 @@ export function ProfileSettingsPage({ onSignOut }) {
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Manage candidate credentials, data governance policies, and cryptographic tenant isolation.
+            Manage candidate credentials, academic background, data governance policies, and cryptographic tenant isolation.
           </p>
         </div>
 
@@ -182,6 +211,30 @@ export function ProfileSettingsPage({ onSignOut }) {
                     <span className="text-white/20">•</span>
                     <span>{formatMemberSince(profile.created_at)}</span>
                   </div>
+
+                  {/* Dynamic Academic Summary Chips */}
+                  {(profile.course || profile.branch || profile.college || profile.year) && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      {(profile.course || profile.branch) && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-primary/15 text-primary border border-primary/25">
+                          <GraduationCap className="w-3 h-3" />
+                          <span>{[profile.course, profile.branch].filter(Boolean).join(' • ')}</span>
+                        </span>
+                      )}
+                      {profile.year && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono text-slate-300 bg-white/5 border border-white/10">
+                          <Calendar className="w-3 h-3 text-slate-400" />
+                          <span>{profile.year}</span>
+                        </span>
+                      )}
+                      {profile.college && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono text-slate-300 bg-white/5 border border-white/10 truncate max-w-[200px]">
+                          <Building className="w-3 h-3 text-slate-400" />
+                          <span className="truncate">{profile.college}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -205,58 +258,147 @@ export function ProfileSettingsPage({ onSignOut }) {
             )}
 
             {/* Profile Form */}
-            <form id="profile-form" onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="font-display text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-primary" />
-                    <span>Candidate Full Name</span>
-                  </label>
-                  <span className="text-[10px] font-mono text-muted-foreground">Editable</span>
+            <form id="profile-form" onSubmit={handleSaveProfile} className="space-y-5">
+              {/* Primary Identity Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-display text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-primary" />
+                      <span>Full Name</span>
+                    </label>
+                    <span className="text-[10px] font-mono text-muted-foreground">Editable</span>
+                  </div>
+                  <div className="relative flex items-center">
+                    <User className="w-4 h-4 text-muted-foreground absolute left-3.5 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={profile.full_name}
+                      onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                      placeholder="e.g. John Doe"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.03] text-foreground text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/60 focus:bg-white/[0.06] transition-all"
+                    />
+                  </div>
                 </div>
-                <div className="relative flex items-center">
-                  <User className="w-4 h-4 text-muted-foreground absolute left-3.5 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={profile.full_name}
-                    onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                    placeholder="e.g. John Doe"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.03] text-foreground text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/60 focus:bg-white/[0.06] transition-all"
-                  />
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-display text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Primary Email</span>
+                    </label>
+                    <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-emerald-400" />
+                      <span>Locked</span>
+                    </span>
+                  </div>
+                  <div className="relative flex items-center">
+                    <Mail className="w-4 h-4 text-muted-foreground/60 absolute left-3.5 pointer-events-none" />
+                    <input
+                      type="email"
+                      value={profile.email}
+                      disabled
+                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-white/5 bg-white/[0.015] text-muted-foreground text-sm font-mono-numbers cursor-not-allowed select-all"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="font-display text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Primary Authentication Email</span>
-                  </label>
-                  <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-emerald-400" />
-                    <span>Locked</span>
+              {/* Academic Background Section Divider */}
+              <div className="pt-2 border-t border-border/40">
+                <div className="flex items-center justify-between pb-3">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-primary" />
+                    <h3 className="font-display font-bold text-xs text-foreground tracking-tight">
+                      Academic & Placement Background
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-muted-foreground font-semibold">
+                    Optional
                   </span>
                 </div>
-                <div className="relative flex items-center">
-                  <Mail className="w-4 h-4 text-muted-foreground/60 absolute left-3.5 pointer-events-none" />
-                  <input
-                    type="email"
-                    value={profile.email}
-                    disabled
-                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-white/5 bg-white/[0.015] text-muted-foreground text-sm font-mono-numbers cursor-not-allowed select-all"
-                  />
+
+                {/* 2x2 Grid for Academic Metadata */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Course */}
+                  <div className="space-y-1.5">
+                    <label className="font-display text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <GraduationCap className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Course / Degree</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <GraduationCap className="w-4 h-4 text-muted-foreground absolute left-3.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={profile.course}
+                        onChange={(e) => setProfile({ ...profile, course: e.target.value })}
+                        placeholder="e.g. B.Tech / MCA / B.Sc"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.03] text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/60 focus:bg-white/[0.06] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Branch */}
+                  <div className="space-y-1.5">
+                    <label className="font-display text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Branch / Major</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <BookOpen className="w-4 h-4 text-muted-foreground absolute left-3.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={profile.branch}
+                        onChange={(e) => setProfile({ ...profile, branch: e.target.value })}
+                        placeholder="e.g. Computer Science, AI/ML"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.03] text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/60 focus:bg-white/[0.06] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Year */}
+                  <div className="space-y-1.5">
+                    <label className="font-display text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Year / Batch</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <Calendar className="w-4 h-4 text-muted-foreground absolute left-3.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={profile.year}
+                        onChange={(e) => setProfile({ ...profile, year: e.target.value })}
+                        placeholder="e.g. 4th Year / 2026 Batch"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.03] text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/60 focus:bg-white/[0.06] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* College */}
+                  <div className="space-y-1.5">
+                    <label className="font-display text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Building className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>College / Institution</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <Building className="w-4 h-4 text-muted-foreground absolute left-3.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={profile.college}
+                        onChange={(e) => setProfile({ ...profile, college: e.target.value })}
+                        placeholder="e.g. National Institute of Technology"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.03] text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/60 focus:bg-white/[0.06] transition-all"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground font-mono flex items-center gap-1.5 pt-0.5">
-                  <Lock className="w-3 h-3 text-slate-500" />
-                  <span>Managed securely via Supabase Auth authentication provider.</span>
-                </p>
               </div>
             </form>
           </div>
 
           <div className="pt-4 border-t border-border/40 flex items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground hidden sm:inline">
-              Changes sync immediately across ATS scoring.
+              Academic details calibrate placement benchmarks.
             </span>
             <ColorfulButton
               type="submit"

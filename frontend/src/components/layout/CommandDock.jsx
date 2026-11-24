@@ -26,7 +26,7 @@ export function CommandDock({ currentView, onNavigate, onOpenAuth }) {
   const userInitial = (user?.email?.[0] || 'U').toUpperCase();
 
   return (
-    <header className="sticky top-3.5 z-50 max-w-[1440px] mx-auto px-3 sm:px-6 w-full no-print">
+    <header className="relative w-full max-w-[1440px] mx-auto px-3 sm:px-6 pt-4 pb-1 z-30 no-print">
       <nav className="relative p-2 sm:px-4 sm:py-2.5 rounded-3xl backdrop-blur-2xl border border-[var(--dock-border)] bg-[var(--dock-bg)] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.14)] flex items-center justify-between gap-3 transition-all overflow-hidden">
         
         {/* Top Hairline Specular Horizon Gradient Line */}

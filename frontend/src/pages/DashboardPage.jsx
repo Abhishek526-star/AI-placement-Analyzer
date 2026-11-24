@@ -162,46 +162,51 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
     }
   ];
 
-  // Verification Breakdown Donut Data
+  // Verification Breakdown Donut Data with clean non-colliding gap geometry
+  const verifiedCount = summary?.top_matched_skills?.length ? Math.max(summary.top_matched_skills.length, 14) : 14;
+  const partialCount = 4;
+  const gapCount = 2; // Exact proportion: 14/20 = 70%, 4/20 = 20%, 2/20 = 10%
+  const totalSkillCount = verifiedCount + partialCount + gapCount; // 20
+
   const donutData = [
     {
       id: 'matched',
-      label: 'Fully Matched Skills',
-      count: summary?.top_matched_skills?.length ? Math.max(summary.top_matched_skills.length, 14) : 14,
+      label: 'Fully Verified Skills',
+      sublabel: `${verifiedCount} skills documented with ATS evidence`,
+      count: verifiedCount,
       percentage: 70,
       color: '#00e5b0',
       strokeColor: '#10b981',
-      dashArray: '240.3 351.86',
+      dashArray: '210 364.42',
       dashOffset: '0',
       glow: 'rgba(0, 229, 176, 0.6)',
-      description: 'Documented evidence in resume',
-      action: 'Optimal Match'
+      icon: CheckCircle2
     },
     {
       id: 'partial',
       label: 'Partial Background Evidence',
-      count: 4,
+      sublabel: `${partialCount} transferable skills detected`,
+      count: partialCount,
       percentage: 20,
       color: '#ffb340',
       strokeColor: '#f59e0b',
-      dashArray: '64.37 351.86',
-      dashOffset: '-246.3',
+      dashArray: '50 364.42',
+      dashOffset: '-240',
       glow: 'rgba(255, 179, 64, 0.6)',
-      description: 'Transferable background identified',
-      action: 'Strengthen'
+      icon: Clock
     },
     {
       id: 'gap',
       label: 'Identified Skill Gaps',
-      count: summary?.top_skill_gaps?.length || 2,
+      sublabel: `${gapCount} priority placement targets`,
+      count: gapCount,
       percentage: 10,
       color: '#ff6b6b',
       strokeColor: '#f43f5e',
-      dashArray: '29.18 351.86',
-      dashOffset: '-316.67',
+      dashArray: '22 364.42',
+      dashOffset: '-318',
       glow: 'rgba(255, 107, 107, 0.6)',
-      description: 'Target requirements missing in resume',
-      action: 'Priority Prep'
+      icon: AlertCircle
     }
   ];
 
@@ -759,16 +764,21 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
             <SkeletonDonutChart />
           ) : (
             <div className="bento-card p-6 rounded-3xl space-y-4 flex flex-col justify-between">
-              <div className="border-b border-border/40 pb-3">
-                <h3 className="font-display font-bold text-base text-foreground">
-                  Verification Breakdown
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Verified candidate skill evidence distribution.
-                </p>
+              <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                <div>
+                  <h3 className="font-display font-bold text-base text-foreground">
+                    Verification Breakdown
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Verified candidate skill evidence distribution.
+                  </p>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  ● 85% Core Fit
+                </span>
               </div>
 
-              {/* Interactive Multi-Arc Donut Dial */}
+              {/* Precision Multi-Arc Donut Dial with Non-Colliding Gaps */}
               <div className="relative w-44 h-44 mx-auto flex items-center justify-center my-1 select-none">
                 <svg className="w-full h-full -rotate-90 overflow-visible" viewBox="0 0 160 160">
                   <defs>
@@ -790,9 +800,9 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                   <circle
                     cx="80"
                     cy="80"
-                    r="56"
+                    r="58"
                     stroke="rgba(255, 255, 255, 0.06)"
-                    strokeWidth="12"
+                    strokeWidth="10"
                     fill="none"
                   />
 
@@ -800,16 +810,16 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                   <circle
                     cx="80"
                     cy="80"
-                    r="56"
+                    r="58"
                     stroke="url(#donutEmerald)"
-                    strokeWidth={hoveredDonutSegment === 'matched' ? '15' : '12'}
-                    strokeDasharray="240.3 351.86"
+                    strokeWidth={hoveredDonutSegment === 'matched' ? '14' : '10'}
+                    strokeDasharray="210 364.42"
                     strokeDashoffset="0"
                     fill="none"
                     strokeLinecap="round"
                     className="cursor-pointer transition-all duration-300"
                     style={{
-                      filter: hoveredDonutSegment === 'matched' ? 'drop-shadow(0 0 8px rgba(0, 229, 176, 0.7))' : undefined
+                      filter: hoveredDonutSegment === 'matched' ? 'drop-shadow(0 0 10px rgba(0, 229, 176, 0.8))' : undefined
                     }}
                     onMouseEnter={() => setHoveredDonutSegment('matched')}
                     onMouseLeave={() => setHoveredDonutSegment(null)}
@@ -819,16 +829,16 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                   <circle
                     cx="80"
                     cy="80"
-                    r="56"
+                    r="58"
                     stroke="url(#donutAmber)"
-                    strokeWidth={hoveredDonutSegment === 'partial' ? '15' : '12'}
-                    strokeDasharray="64.37 351.86"
-                    strokeDashoffset="-246.3"
+                    strokeWidth={hoveredDonutSegment === 'partial' ? '14' : '10'}
+                    strokeDasharray="50 364.42"
+                    strokeDashoffset="-240"
                     fill="none"
                     strokeLinecap="round"
                     className="cursor-pointer transition-all duration-300"
                     style={{
-                      filter: hoveredDonutSegment === 'partial' ? 'drop-shadow(0 0 8px rgba(255, 179, 64, 0.7))' : undefined
+                      filter: hoveredDonutSegment === 'partial' ? 'drop-shadow(0 0 10px rgba(255, 179, 64, 0.8))' : undefined
                     }}
                     onMouseEnter={() => setHoveredDonutSegment('partial')}
                     onMouseLeave={() => setHoveredDonutSegment(null)}
@@ -838,16 +848,16 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                   <circle
                     cx="80"
                     cy="80"
-                    r="56"
+                    r="58"
                     stroke="url(#donutRose)"
-                    strokeWidth={hoveredDonutSegment === 'gap' ? '15' : '12'}
-                    strokeDasharray="29.18 351.86"
-                    strokeDashoffset="-316.67"
+                    strokeWidth={hoveredDonutSegment === 'gap' ? '14' : '10'}
+                    strokeDasharray="22 364.42"
+                    strokeDashoffset="-318"
                     fill="none"
                     strokeLinecap="round"
                     className="cursor-pointer transition-all duration-300"
                     style={{
-                      filter: hoveredDonutSegment === 'gap' ? 'drop-shadow(0 0 8px rgba(255, 107, 107, 0.7))' : undefined
+                      filter: hoveredDonutSegment === 'gap' ? 'drop-shadow(0 0 10px rgba(255, 107, 107, 0.8))' : undefined
                     }}
                     onMouseEnter={() => setHoveredDonutSegment('gap')}
                     onMouseLeave={() => setHoveredDonutSegment(null)}
@@ -858,10 +868,10 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                 <div className="absolute text-center pointer-events-none transition-all">
                   {hoveredDonutSegment === 'matched' ? (
                     <>
-                      <span className="font-display text-2xl font-black text-emerald-400 font-mono-numbers">
-                        14
+                      <span className="font-display text-3xl font-black text-emerald-400 font-mono-numbers">
+                        {verifiedCount}
                       </span>
-                      <span className="block text-[10px] uppercase font-bold text-emerald-300 tracking-wider">
+                      <span className="block text-[10px] uppercase font-bold text-emerald-300 tracking-wider font-mono">
                         Matched
                       </span>
                       <span className="block text-[9px] font-mono text-muted-foreground">
@@ -870,10 +880,10 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                     </>
                   ) : hoveredDonutSegment === 'partial' ? (
                     <>
-                      <span className="font-display text-2xl font-black text-amber-400 font-mono-numbers">
-                        4
+                      <span className="font-display text-3xl font-black text-amber-400 font-mono-numbers">
+                        {partialCount}
                       </span>
-                      <span className="block text-[10px] uppercase font-bold text-amber-300 tracking-wider">
+                      <span className="block text-[10px] uppercase font-bold text-amber-300 tracking-wider font-mono">
                         Partial
                       </span>
                       <span className="block text-[9px] font-mono text-muted-foreground">
@@ -882,82 +892,86 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                     </>
                   ) : hoveredDonutSegment === 'gap' ? (
                     <>
-                      <span className="font-display text-2xl font-black text-rose-400 font-mono-numbers">
-                        2
+                      <span className="font-display text-3xl font-black text-rose-400 font-mono-numbers">
+                        {gapCount}
                       </span>
-                      <span className="block text-[10px] uppercase font-bold text-rose-300 tracking-wider">
+                      <span className="block text-[10px] uppercase font-bold text-rose-300 tracking-wider font-mono">
                         Gaps
                       </span>
                       <span className="block text-[9px] font-mono text-muted-foreground">
-                        10% Focus
+                        10% Priority
                       </span>
                     </>
                   ) : (
                     <>
-                      <span className="font-display text-2xl font-black text-foreground font-mono-numbers">
-                        {summary?.top_matched_skills?.length || 14}
+                      <span className="font-display text-3xl font-black text-foreground font-mono-numbers tracking-tight">
+                        {verifiedCount}
                       </span>
-                      <span className="block text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                        Verified
+                      <span className="block text-[10px] font-mono font-bold uppercase text-muted-foreground tracking-wider">
+                        Of {totalSkillCount} Skills
                       </span>
-                      <span className="block text-[9px] font-mono text-emerald-400 font-semibold">
-                        85% Coverage
+                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                        Verified Core
                       </span>
                     </>
                   )}
                 </div>
               </div>
 
-              {/* Interactive Frosted Legend Rows */}
-              <div className="space-y-2 text-xs">
+              {/* Integrated Unified Telemetry Rows (Replaces bulky separate boxes) */}
+              <div className="divide-y divide-white/5 rounded-2xl bg-white/[0.02] border border-white/5 overflow-hidden">
                 {donutData.map((row) => {
                   const isHovered = hoveredDonutSegment === row.id;
+                  const Icon = row.icon;
                   return (
                     <div
                       key={row.id}
                       onMouseEnter={() => setHoveredDonutSegment(row.id)}
                       onMouseLeave={() => setHoveredDonutSegment(null)}
-                      className={`p-2.5 rounded-2xl transition-all cursor-pointer border ${
-                        isHovered
-                          ? 'bg-white/[0.08] shadow-lg'
-                          : 'bg-white/[0.02] hover:bg-white/[0.05]'
+                      className={`p-3 flex items-center justify-between transition-colors cursor-pointer select-none ${
+                        isHovered ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'
                       }`}
-                      style={{
-                        borderColor: isHovered ? row.color : 'rgba(255, 255, 255, 0.08)'
-                      }}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: row.color }}
-                          ></span>
-                          <span className={`font-semibold ${isHovered ? 'text-white' : 'text-slate-300'}`}>
-                            {row.label}
-                          </span>
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border transition-transform"
+                          style={{
+                            backgroundColor: `${row.color}18`,
+                            borderColor: `${row.color}40`,
+                            color: row.color,
+                            transform: isHovered ? 'scale(1.08)' : 'scale(1)'
+                          }}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
                         </div>
-                        <div className="flex items-center gap-2 font-mono">
-                          <span className="text-[11px] text-muted-foreground font-semibold">
-                            {row.count} skills
-                          </span>
-                          <span
-                            className="font-bold text-xs"
-                            style={{ color: row.color }}
-                          >
-                            {row.percentage}%
-                          </span>
+                        <div>
+                          <div className={`text-xs font-semibold transition-colors ${
+                            isHovered ? 'text-white' : 'text-slate-200'
+                          }`}>
+                            {row.label}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            {row.sublabel}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Mini Telemetry Progress Strip */}
-                      <div className="mt-2 h-1 rounded-full bg-white/10 overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{
-                            width: `${row.percentage}%`,
-                            backgroundColor: row.color
-                          }}
-                        ></div>
+                      <div className="text-right font-mono shrink-0 ml-2">
+                        <span
+                          className="text-xs font-bold"
+                          style={{ color: row.color }}
+                        >
+                          {row.percentage}%
+                        </span>
+                        <div className="w-12 h-1 rounded-full bg-white/10 mt-1 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{
+                              width: `${row.percentage}%`,
+                              backgroundColor: row.color
+                            }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
                   );

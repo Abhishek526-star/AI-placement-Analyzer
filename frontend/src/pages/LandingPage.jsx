@@ -46,7 +46,7 @@ export function LandingPage({ onOpenAuth }) {
         </div>
 
         {/* Hero Interactive Bento Preview Card */}
-        <div className="mt-12 bento-card p-6 sm:p-7 rounded-3xl max-w-3xl mx-auto text-left relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-gradient-to-r before:from-pink-500 before:via-purple-500 before:to-indigo-500">
+        <div className="mt-12 bento-card p-6 sm:p-7 rounded-3xl max-w-3xl mx-auto text-left relative overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border/40 gap-3">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex flex-col items-center justify-center font-mono-numbers font-black text-base shadow-[0_0_12px_rgba(16,185,129,0.25)]">

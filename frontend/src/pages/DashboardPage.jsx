@@ -130,7 +130,6 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
           <>
             {/* KPI 1: Total Analyses (Indigo/Violet Jewel) */}
             <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[185px] group hover:border-white/20 transition-all duration-300">
-              <div className="nav-specular-highlight absolute top-0 inset-x-4 h-[1.5px] pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity"></div>
               <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none"></div>
 
               <div className="flex items-center justify-between">
@@ -175,7 +174,6 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
 
             {/* KPI 2: Active Resume Profile (Cyan/Sky Jewel) */}
             <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[185px] group hover:border-white/20 transition-all duration-300">
-              <div className="nav-specular-highlight absolute top-0 inset-x-4 h-[1.5px] pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity"></div>
               <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-cyan-500/10 blur-2xl pointer-events-none"></div>
 
               <div className="flex items-center justify-between">
@@ -243,7 +241,6 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
 
             {/* KPI 3: Latest ATS Placement Match (Emerald/Mint Jewel) */}
             <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[185px] group hover:border-white/20 transition-all duration-300">
-              <div className="nav-specular-highlight absolute top-0 inset-x-4 h-[1.5px] pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity"></div>
               <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none"></div>
 
               <div className="flex items-center justify-between">
@@ -294,7 +291,6 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
 
             {/* KPI 4: Priority Skill Gap (Amber/Coral Jewel) */}
             <div className="bento-card p-5 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[185px] group hover:border-white/20 transition-all duration-300">
-              <div className="nav-specular-highlight absolute top-0 inset-x-4 h-[1.5px] pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity"></div>
               <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-amber-500/10 blur-2xl pointer-events-none"></div>
 
               <div className="flex items-center justify-between">

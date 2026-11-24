@@ -7,9 +7,6 @@ import { Loader2 } from 'lucide-react';
 export function SkeletonKPICard({ className = '' }) {
   return (
     <div className={`bento-card p-5 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[185px] ${className}`}>
-      {/* Top specular hairline skeleton */}
-      <div className="absolute top-0 inset-x-4 h-[1.5px] bg-white/10 pointer-events-none"></div>
-
       {/* Row 1: Eyebrow label + Jewel Squircle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">

@@ -96,7 +96,6 @@ function MainLayout() {
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col bg-background text-foreground dot-grid relative selection:bg-indigo-500 selection:text-white">
-        <div className="fixed top-0 left-0 right-0 h-1 ribbon-gradient z-50 pointer-events-none"></div>
         <div
           style={{ background: 'radial-gradient(circle, var(--aurora-1) 0%, transparent 70%)' }}
           className="fixed top-0 left-1/4 w-[650px] h-[450px] rounded-full blur-[140px] pointer-events-none -z-10"
@@ -120,9 +119,6 @@ function MainLayout() {
   // Authenticated users see the Prismatic Bento-Cockpit Layout
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground dot-grid relative selection:bg-indigo-500 selection:text-white">
-      {/* Top Viewport Progress Ribbon */}
-      <div className="fixed top-0 left-0 right-0 h-1 ribbon-gradient z-50 pointer-events-none"></div>
-
       {/* Floating Ambient Aurora Color Blooms */}
       <div
         style={{ background: 'radial-gradient(circle, var(--aurora-1) 0%, transparent 70%)' }}

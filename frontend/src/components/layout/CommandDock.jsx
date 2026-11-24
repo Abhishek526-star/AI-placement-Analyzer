@@ -29,9 +29,6 @@ export function CommandDock({ currentView, onNavigate, onOpenAuth }) {
     <header className="relative w-full max-w-[1440px] mx-auto px-3 sm:px-6 pt-4 pb-1 z-30 no-print">
       <nav className="relative p-2 sm:px-4 sm:py-2.5 rounded-3xl backdrop-blur-2xl border border-[var(--dock-border)] bg-[var(--dock-bg)] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.14)] flex items-center justify-between gap-3 transition-all overflow-hidden">
         
-        {/* Top Hairline Specular Horizon Gradient Line */}
-        <div className="nav-specular-highlight absolute top-0 left-6 right-6 h-[1.5px] rounded-full pointer-events-none opacity-85"></div>
-
         {/* 1. Left: 3D Jewel Brand Mark & Cockpit Telemetry Beacon */}
         <div
           className="flex items-center gap-3 cursor-pointer select-none group shrink-0"

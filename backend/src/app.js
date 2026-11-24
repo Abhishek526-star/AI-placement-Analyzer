@@ -34,6 +34,16 @@ app.use(
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
+// Health Check
+app.get('/health', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'AI Placement Analyzer API is running',
+    environment: env.NODE_ENV
+  });
+});
+
+
 // 6. Versioned API Routes (/api/v1)
 app.use('/api/v1', apiRoutes);
 

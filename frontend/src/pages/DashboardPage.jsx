@@ -1180,7 +1180,7 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
                   </div>
                   <div className="text-[10px] font-mono text-indigo-400 font-semibold">
-                    1536-D Vector + BM25 Exact Match
+                    768-D Vector + BM25 Exact Match
                   </div>
                 </div>
               </div>

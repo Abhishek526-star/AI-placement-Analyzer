@@ -488,7 +488,7 @@ export function ProfileSettingsPage({ onSignOut }) {
                 <div className="min-w-0 space-y-0.5">
                   <div className="text-xs font-semibold text-foreground flex items-center justify-between">
                     <span>Isolated pgvector Storage</span>
-                    <span className="text-[10px] font-mono text-indigo-400">1536-D Chunks</span>
+                    <span className="text-[10px] font-mono text-indigo-400">768-D Chunks</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground leading-snug">
                     Resumes are tokenized into encrypted vector embeddings scoped only to you.
@@ -595,7 +595,7 @@ export function ProfileSettingsPage({ onSignOut }) {
                 <span>Vector Embeddings</span>
               </div>
               <p className="text-[11px] text-muted-foreground leading-snug">
-                1536-D pgvector semantic embeddings and cosine index records are immediately wiped.
+                768-D pgvector semantic embeddings and cosine index records are immediately wiped.
               </p>
             </div>
 
@@ -631,7 +631,7 @@ export function ProfileSettingsPage({ onSignOut }) {
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              This action <span className="text-rose-400 font-semibold">cannot be undone</span>. To permanently erase your candidate profile, uploaded resumes, 1536-D vector embeddings, and all historical match telemetry, please type <span className="font-bold font-mono text-rose-400 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">DELETE</span> below:
+              This action <span className="text-rose-400 font-semibold">cannot be undone</span>. To permanently erase your candidate profile, uploaded resumes, 768-D vector embeddings, and all historical match telemetry, please type <span className="font-bold font-mono text-rose-400 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">DELETE</span> below:
             </p>
 
             <div className="space-y-1.5">

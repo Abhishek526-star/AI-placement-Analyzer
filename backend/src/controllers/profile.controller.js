@@ -59,32 +59,26 @@ export async function updateProfile(req, res, next) {
 
     // 1. Update profiles table (try with academic fields first, fallback to full_name if columns not in table yet)
     let updatedProfile = null;
-    const academicPayload = {
-      full_name: full_name !== undefined ? full_name : undefined,
-      course: course !== undefined ? course : undefined,
-      branch: branch !== undefined ? branch : undefined,
-      year: year !== undefined ? year : undefined,
-      college: college !== undefined ? college : undefined
-    };
-
-    // Clean undefined fields
-    const cleanPayload = Object.fromEntries(
-      Object.entries(academicPayload).filter(([_, v]) => v !== undefined)
-    );
+    const academicPayload = {};
+    if (full_name !== undefined) academicPayload.full_name = full_name;
+    if (course !== undefined) academicPayload.course = course;
+    if (branch !== undefined) academicPayload.branch = branch;
+    if (year !== undefined) academicPayload.year = year;
+    if (college !== undefined) academicPayload.college = college;
 
     const { data, error } = await client
       .from('profiles')
-      .update(cleanPayload)
+      .update(academicPayload)
       .eq('id', userId)
       .select('*')
       .single();
 
     if (error) {
-      // If error is due to missing columns in profiles table (e.g. 42703), fallback to updating full_name only
-      if (error.code === '42703' || error.message?.includes('column')) {
+      // If error is due to missing columns in profiles table (e.g. 42703 or PGRST204), fallback to updating full_name only
+      if (error.code === '42703' || error.code === 'PGRST204' || error.message?.includes('column')) {
         const { data: fallbackData } = await client
           .from('profiles')
-          .update({ full_name: full_name || '' })
+          .update({ full_name: full_name !== undefined ? full_name : '' })
           .eq('id', userId)
           .select('id, full_name, email, created_at, updated_at')
           .single();
@@ -97,31 +91,38 @@ export async function updateProfile(req, res, next) {
     }
 
     // 2. Persist to auth user_metadata to ensure 100% persistence across sessions & auth context
+    let updatedUserMeta = {};
     try {
       const { data: authUser } = await serviceClient.auth.admin.getUserById(userId);
       const existingMeta = authUser?.user?.user_metadata || {};
-      await serviceClient.auth.admin.updateUserById(userId, {
-        user_metadata: {
-          ...existingMeta,
-          full_name: full_name !== undefined ? full_name : existingMeta.full_name || '',
-          course: course !== undefined ? course : existingMeta.course || '',
-          branch: branch !== undefined ? branch : existingMeta.branch || '',
-          year: year !== undefined ? year : existingMeta.year || '',
-          college: college !== undefined ? college : existingMeta.college || ''
-        }
+      const newMeta = {
+        ...existingMeta,
+        full_name: full_name !== undefined ? full_name : (existingMeta.full_name || ''),
+        course: course !== undefined ? course : (existingMeta.course || ''),
+        branch: branch !== undefined ? branch : (existingMeta.branch || ''),
+        year: year !== undefined ? year : (existingMeta.year || ''),
+        college: college !== undefined ? college : (existingMeta.college || '')
+      };
+      const { data: savedAuth } = await serviceClient.auth.admin.updateUserById(userId, {
+        user_metadata: newMeta
       });
+      if (savedAuth?.user?.user_metadata) {
+        updatedUserMeta = savedAuth.user.user_metadata;
+      } else {
+        updatedUserMeta = newMeta;
+      }
     } catch (metaErr) {
       console.warn('Could not sync user_metadata in auth:', metaErr);
     }
 
     const result = {
       id: userId,
-      full_name: updatedProfile?.full_name !== undefined ? updatedProfile.full_name : full_name || '',
+      full_name: updatedProfile?.full_name !== undefined ? updatedProfile.full_name : (full_name ?? updatedUserMeta.full_name ?? ''),
       email: updatedProfile?.email || req.user.email,
-      course: updatedProfile?.course !== undefined ? updatedProfile.course : (course || ''),
-      branch: updatedProfile?.branch !== undefined ? updatedProfile.branch : (branch || ''),
-      year: updatedProfile?.year !== undefined ? updatedProfile.year : (year || ''),
-      college: updatedProfile?.college !== undefined ? updatedProfile.college : (college || ''),
+      course: updatedProfile?.course !== undefined ? updatedProfile.course : (course ?? updatedUserMeta.course ?? ''),
+      branch: updatedProfile?.branch !== undefined ? updatedProfile.branch : (branch ?? updatedUserMeta.branch ?? ''),
+      year: updatedProfile?.year !== undefined ? updatedProfile.year : (year ?? updatedUserMeta.year ?? ''),
+      college: updatedProfile?.college !== undefined ? updatedProfile.college : (college ?? updatedUserMeta.college ?? ''),
       created_at: updatedProfile?.created_at || new Date().toISOString(),
       updated_at: updatedProfile?.updated_at || new Date().toISOString()
     };

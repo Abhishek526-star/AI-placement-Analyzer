@@ -37,15 +37,37 @@ function formatMemberSince(dateString) {
 export function ProfileSettingsPage({ onSignOut }) {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
-  const [profile, setProfile] = useState({
-    full_name: '',
-    email: user?.email || '',
-    course: '',
-    branch: '',
-    year: '',
-    college: '',
-    created_at: null
+  const cacheKey = user?.id ? `candidate_profile_${user.id}` : 'candidate_profile_cache';
+
+  const [profile, setProfile] = useState(() => {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return {
+          full_name: parsed.full_name || '',
+          email: parsed.email || user?.email || '',
+          course: parsed.course || '',
+          branch: parsed.branch || '',
+          year: parsed.year || '',
+          college: parsed.college || '',
+          created_at: parsed.created_at || null
+        };
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      full_name: '',
+      email: user?.email || '',
+      course: '',
+      branch: '',
+      year: '',
+      college: '',
+      created_at: null
+    };
   });
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -62,7 +84,7 @@ export function ProfileSettingsPage({ onSignOut }) {
     apiClient('/profile')
       .then((data) => {
         if (data) {
-          setProfile({
+          const merged = {
             full_name: data.full_name || '',
             email: data.email || user?.email || '',
             course: data.course || '',
@@ -70,24 +92,21 @@ export function ProfileSettingsPage({ onSignOut }) {
             year: data.year || '',
             college: data.college || '',
             created_at: data.created_at
-          });
+          };
+          setProfile(merged);
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(merged));
+          } catch {
+            // ignore
+          }
         }
         setLoading(false);
       })
       .catch((err) => {
-        console.warn('Could not load profile from DB, using auth context info:', err);
-        setProfile({
-          full_name: '',
-          email: user?.email || '',
-          course: '',
-          branch: '',
-          year: '',
-          college: '',
-          created_at: new Date().toISOString()
-        });
+        console.warn('Could not load profile from DB, using fallback info:', err);
         setLoading(false);
       });
-  }, [user]);
+  }, [user, cacheKey]);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -106,14 +125,20 @@ export function ProfileSettingsPage({ onSignOut }) {
           college: profile.college
         })
       });
-      setProfile((prev) => ({
-        ...prev,
-        full_name: updated.full_name !== undefined ? updated.full_name : prev.full_name,
-        course: updated.course !== undefined ? updated.course : prev.course,
-        branch: updated.branch !== undefined ? updated.branch : prev.branch,
-        year: updated.year !== undefined ? updated.year : prev.year,
-        college: updated.college !== undefined ? updated.college : prev.college
-      }));
+      const merged = {
+        ...profile,
+        full_name: updated.full_name !== undefined ? updated.full_name : profile.full_name,
+        course: updated.course !== undefined ? updated.course : profile.course,
+        branch: updated.branch !== undefined ? updated.branch : profile.branch,
+        year: updated.year !== undefined ? updated.year : profile.year,
+        college: updated.college !== undefined ? updated.college : profile.college
+      };
+      setProfile(merged);
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(merged));
+      } catch {
+        // ignore
+      }
       setSaveSuccess(true);
       toast.success('Candidate profile and academic background updated!', 'Profile Saved');
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -139,6 +164,11 @@ export function ProfileSettingsPage({ onSignOut }) {
     setDeleting(true);
     try {
       await apiClient('/profile', { method: 'DELETE' });
+      try {
+        localStorage.removeItem(cacheKey);
+      } catch {
+        // ignore
+      }
       setShowDeleteModal(false);
       toast.success('Your account and all associated data have been permanently erased.', 'Account Deleted');
       if (onSignOut) {
@@ -152,7 +182,7 @@ export function ProfileSettingsPage({ onSignOut }) {
     }
   };
 
-  if (loading) {
+  if (loading && !profile.full_name && !profile.course && !profile.email) {
     return (
       <div className="w-full space-y-6">
         <SkeletonCardGrid count={3} />

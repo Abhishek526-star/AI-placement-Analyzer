@@ -8,7 +8,11 @@ const router = Router();
 
 const updateProfileSchema = {
   body: z.object({
-    full_name: z.string().min(1, 'Full name cannot be empty').max(100, 'Name too long')
+    full_name: z.string().max(100, 'Name too long').optional().or(z.literal('')),
+    course: z.string().max(100, 'Course name too long').optional().or(z.literal('')),
+    branch: z.string().max(100, 'Branch name too long').optional().or(z.literal('')),
+    year: z.string().max(50, 'Year too long').optional().or(z.literal('')),
+    college: z.string().max(150, 'College name too long').optional().or(z.literal(''))
   })
 };
 

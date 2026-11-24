@@ -645,6 +645,7 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                         stroke="#f43f5e"
                         strokeWidth="2.5"
                         strokeDasharray="6 4"
+                        className="animate-marching-dash"
                       />
                       {telemetryPoints.map((pt, i) => (
                         <circle
@@ -668,6 +669,7 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                       <path
                         d="M 64,180 L 64,46 C 128,46 128,37 192,37 C 256,37 256,64 320,64 C 384,64 384,44.5 448,44.5 C 512,44.5 512,70 576,70 L 576,180 Z"
                         fill="url(#telemetryCandidateGrad)"
+                        className="animate-area-fade"
                       />
 
                       {/* Smooth Luminous Spline Stroke */}
@@ -677,6 +679,7 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                         stroke="#6366f1"
                         strokeWidth="3.5"
                         strokeLinecap="round"
+                        className="animate-spline-draw"
                       />
 
                       {/* Data Nodes with Hover Interaction */}
@@ -690,13 +693,22 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                             onMouseLeave={() => setHoveredPointIndex(null)}
                           >
                             {/* Hover Halo Ring */}
-                            {isHovered && (
+                            {isHovered ? (
                               <circle
                                 cx={pt.cx}
                                 cy={pt.cy}
                                 r="12"
                                 fill="#818cf8"
                                 fillOpacity="0.25"
+                                className="animate-pulse"
+                              />
+                            ) : (
+                              <circle
+                                cx={pt.cx}
+                                cy={pt.cy}
+                                r="8"
+                                fill="#818cf8"
+                                fillOpacity="0.15"
                                 className="animate-pulse"
                               />
                             )}
@@ -780,6 +792,9 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
 
               {/* Precision Multi-Arc Donut Dial with Non-Colliding Gaps */}
               <div className="relative w-44 h-44 mx-auto flex items-center justify-center my-1 select-none">
+                {/* Ambient Breathing Glow */}
+                <div className="absolute w-36 h-36 rounded-full bg-emerald-500/10 blur-xl pointer-events-none animate-dial-pulse"></div>
+
                 <svg className="w-full h-full -rotate-90 overflow-visible" viewBox="0 0 160 160">
                   <defs>
                     <linearGradient id="donutEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -817,9 +832,10 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                     strokeDashoffset="0"
                     fill="none"
                     strokeLinecap="round"
-                    className="cursor-pointer transition-all duration-300"
+                    className="cursor-pointer transition-all duration-300 animate-donut-draw"
                     style={{
-                      filter: hoveredDonutSegment === 'matched' ? 'drop-shadow(0 0 10px rgba(0, 229, 176, 0.8))' : undefined
+                      animationDelay: '0ms',
+                      filter: hoveredDonutSegment === 'matched' ? 'drop-shadow(0 0 12px rgba(0, 229, 176, 0.85))' : undefined
                     }}
                     onMouseEnter={() => setHoveredDonutSegment('matched')}
                     onMouseLeave={() => setHoveredDonutSegment(null)}
@@ -836,9 +852,10 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                     strokeDashoffset="-240"
                     fill="none"
                     strokeLinecap="round"
-                    className="cursor-pointer transition-all duration-300"
+                    className="cursor-pointer transition-all duration-300 animate-donut-draw"
                     style={{
-                      filter: hoveredDonutSegment === 'partial' ? 'drop-shadow(0 0 10px rgba(255, 179, 64, 0.8))' : undefined
+                      animationDelay: '150ms',
+                      filter: hoveredDonutSegment === 'partial' ? 'drop-shadow(0 0 12px rgba(255, 179, 64, 0.85))' : undefined
                     }}
                     onMouseEnter={() => setHoveredDonutSegment('partial')}
                     onMouseLeave={() => setHoveredDonutSegment(null)}
@@ -855,9 +872,10 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                     strokeDashoffset="-318"
                     fill="none"
                     strokeLinecap="round"
-                    className="cursor-pointer transition-all duration-300"
+                    className="cursor-pointer transition-all duration-300 animate-donut-draw"
                     style={{
-                      filter: hoveredDonutSegment === 'gap' ? 'drop-shadow(0 0 10px rgba(255, 107, 107, 0.8))' : undefined
+                      animationDelay: '300ms',
+                      filter: hoveredDonutSegment === 'gap' ? 'drop-shadow(0 0 12px rgba(255, 107, 107, 0.85))' : undefined
                     }}
                     onMouseEnter={() => setHoveredDonutSegment('gap')}
                     onMouseLeave={() => setHoveredDonutSegment(null)}
@@ -865,7 +883,10 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                 </svg>
 
                 {/* Central Telemetry HUD */}
-                <div className="absolute text-center pointer-events-none transition-all">
+                <div
+                  key={hoveredDonutSegment || 'default'}
+                  className="absolute text-center pointer-events-none transition-all animate-count-pop"
+                >
                   {hoveredDonutSegment === 'matched' ? (
                     <>
                       <span className="font-display text-3xl font-black text-emerald-400 font-mono-numbers">
@@ -965,7 +986,7 @@ export function DashboardPage({ onNavigate, onOpenAnalysis }) {
                         </span>
                         <div className="w-12 h-1 rounded-full bg-white/10 mt-1 overflow-hidden">
                           <div
-                            className="h-full rounded-full transition-all duration-300"
+                            className="h-full rounded-full transition-all duration-300 animate-bar-grow"
                             style={{
                               width: `${row.percentage}%`,
                               backgroundColor: row.color
